@@ -18,7 +18,7 @@ Ask your AI assistant questions like:
 |------|-------------|
 | `authenticate_coros` | Log in with email and password — token stored securely in keyring |
 | `check_coros_auth` | Check whether a valid auth token is present |
-| `get_daily_metrics` | Fetch daily metrics (resting HR, steps, calories, training load, distance) for n weeks (default: 4) |
+| `get_daily_metrics` | Fetch daily metrics (HRV, resting HR, training load, VO2max, stamina, and more) for n weeks (default: 4) |
 
 ---
 
@@ -122,7 +122,24 @@ Fetch daily metrics for a configurable number of weeks (default: 4).
 
 Returns: `records` (list), `count`, `date_range`
 
-Each record includes: `date`, `avg_sleep_hrv`, `resting_hr`, `steps`, `calories`, `training_load`, `distance`, `duration`
+Each record includes:
+
+| Field | Source | Description |
+|-------|--------|-------------|
+| `date` | — | Date (YYYYMMDD) |
+| `avg_sleep_hrv` | dayDetail | Nightly HRV (RMSSD ms) |
+| `baseline` | dayDetail | HRV rolling baseline |
+| `rhr` | dayDetail | Resting heart rate (bpm) |
+| `training_load` | dayDetail | Daily training load |
+| `training_load_ratio` | dayDetail | Acute/chronic training load ratio |
+| `tired_rate` | dayDetail | Fatigue rate |
+| `ati` / `cti` | dayDetail | Acute / chronic training index |
+| `distance` / `duration` | dayDetail | Distance (m) / duration (s) |
+| `vo2max` | analyse (merge) | VO2 Max (last ~28 days) |
+| `lthr` | analyse (merge) | Lactate threshold heart rate (bpm) |
+| `ltsp` | analyse (merge) | Lactate threshold pace (s/km) |
+| `stamina_level` | analyse (merge) | Base fitness level |
+| `stamina_level_7d` | analyse (merge) | 7-day fitness trend |
 
 ---
 
