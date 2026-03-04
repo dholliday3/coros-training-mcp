@@ -1,6 +1,6 @@
 # coros-mcp
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that fetches sleep, HRV, and daily metrics from the unofficial Coros Training Hub API and exposes them to AI assistants like Claude.
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that fetches HRV and daily metrics from the unofficial Coros Training Hub API and exposes them to AI assistants like Claude.
 
 **No API key required.** This server authenticates directly with your Coros Training Hub credentials. Your token is stored securely in your system keyring (or an encrypted local file as fallback), never transmitted anywhere except to Coros.
 
@@ -11,7 +11,6 @@ Ask your AI assistant questions like:
 - "What was my HRV trend over the last 4 weeks?"
 - "Show me my resting heart rate and training load for last week"
 - "How many steps did I average per day this month?"
-- "Compare my sleep duration across the last 30 days"
 
 ## Features
 
@@ -19,9 +18,7 @@ Ask your AI assistant questions like:
 |------|-------------|
 | `authenticate_coros` | Log in with email and password — token stored securely in keyring |
 | `check_coros_auth` | Check whether a valid auth token is present |
-| `get_hrv_data` | Fetch HRV data (Heart Rate Variability / nightly RMSSD) |
 | `get_daily_metrics` | Fetch daily metrics (resting HR, steps, calories, training load, distance) for n weeks (default: 4) |
-| `get_sleep_data` | Fetch sleep data — sleep phase breakdown not yet available (see [docs](docs/discover-endpoints.md)) |
 
 ---
 
@@ -115,18 +112,6 @@ Check whether a valid token is stored and how long ago it was issued.
 
 Returns: `authenticated`, `user_id`, `region`, `expires_in_hours`
 
-### `get_hrv_data`
-
-Fetch nightly HRV (RMSSD) data from the Coros API.
-
-```json
-{}
-```
-
-Returns: `records` (list), `count`, `date_range`
-
-Each record includes: `date`, `avg_sleep_hrv`
-
 ### `get_daily_metrics`
 
 Fetch daily metrics for a configurable number of weeks (default: 4).
@@ -138,14 +123,6 @@ Fetch daily metrics for a configurable number of weeks (default: 4).
 Returns: `records` (list), `count`, `date_range`
 
 Each record includes: `date`, `avg_sleep_hrv`, `resting_hr`, `steps`, `calories`, `training_load`, `distance`, `duration`
-
-### `get_sleep_data`
-
-Fetch sleep data for one or more days. Note: sleep phase breakdown (deep/light/REM/awake) is not yet available — the mobile-app endpoint has not been discovered yet. See [`docs/discover-endpoints.md`](docs/discover-endpoints.md).
-
-```json
-{ "date": "20240315", "days": 7 }
-```
 
 ---
 
