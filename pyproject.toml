@@ -17,4 +17,8 @@ requires = ["hatchling"]
 build-backend = "hatchling.build"
 
 [project.scripts]
-coros-mcp = "server:main"
+coros-mcp = "cli:main"
+
+[tool.hatch.build.targets.wheel]
+packages = ["."]
+include = ["*.py", "auth/*.py"]
