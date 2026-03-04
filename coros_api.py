@@ -15,7 +15,7 @@ from typing import Optional
 import httpx
 
 from auth.storage import get_token, store_token
-from models import DailyRecord, HRVRecord, SleepPhases, SleepRecord, StoredAuth
+from models import ActivitySummary, DailyRecord, HRVRecord, SleepPhases, SleepRecord, StoredAuth
 
 # ---------------------------------------------------------------------------
 # Endpoint constants
@@ -27,6 +27,9 @@ ENDPOINTS = {
     "analyse": "/analyse/query",            # summary + t7dayList (28 days, has VO2max/fitness)
     "analyse_detail": "/analyse/dayDetail/query",  # daily metrics with date range (up to 24 weeks)
     "sleep": "/sleep/query",                # NOT available on Training Hub API
+    "activity_list": "/activity/query",
+    "activity_detail": "/activity/detail/query",
+    "sport_types": "/activity/fit/getImportSportList",
 }
 
 # Login works on teamapi.coros.com but tokens are only valid on the
@@ -249,6 +252,103 @@ async def fetch_daily_records(
                 rec.stamina_level_7d = item.get("staminaLevel7d") or rec.stamina_level_7d
 
     return sorted(records_by_date.values(), key=lambda r: r.date)
+
+
+# ---------------------------------------------------------------------------
+# Activity data
+# ---------------------------------------------------------------------------
+
+SPORT_NAMES: dict[int, str] = {
+    100: "Running", 102: "Trail Running", 103: "Track Running", 104: "Hiking",
+    200: "Road Bike", 201: "Indoor Cycling", 203: "Gravel Bike", 204: "MTB",
+    400: "Cardio", 402: "Strength", 403: "Yoga",
+    900: "Walking", 9807: "Bike Commute",
+}
+
+
+def _parse_activity(item: dict) -> ActivitySummary:
+    sport_type = item.get("sportType")
+    return ActivitySummary(
+        activity_id=str(item.get("labelId", "")),
+        name=item.get("name") or item.get("remark"),
+        sport_type=sport_type,
+        sport_name=SPORT_NAMES.get(sport_type, f"Sport {sport_type}") if sport_type else None,
+        start_time=str(item.get("startTime", "")) or None,
+        end_time=str(item.get("endTime", "")) or None,
+        duration_seconds=item.get("totalTime"),
+        distance_meters=item.get("totalDistance"),
+        avg_hr=item.get("avgHr"),
+        max_hr=item.get("maxHr"),
+        calories=item.get("calorie") or item.get("totalCalorie"),
+        training_load=item.get("trainingLoad"),
+        avg_power=item.get("avgPower"),
+        normalized_power=item.get("np"),
+        elevation_gain=item.get("totalAscent") or item.get("elevationGain"),
+    )
+
+
+async def fetch_activities(
+    auth: StoredAuth,
+    start_day: str,
+    end_day: str,
+    page: int = 1,
+    size: int = 30,
+    mode_list: Optional[list[int]] = None,
+) -> tuple[list[ActivitySummary], int]:
+    """
+    Fetch activity list for a date range.
+    Returns (activities, total_count).
+    """
+    params: dict = {
+        "startDay": start_day,
+        "endDay": end_day,
+        "pageNumber": page,
+        "size": size,
+    }
+    if mode_list:
+        params["modeList"] = ",".join(str(m) for m in mode_list)
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(
+            _base_url(auth.region) + ENDPOINTS["activity_list"],
+            params=params,
+            headers=_auth_headers(auth),
+        )
+        resp.raise_for_status()
+        body = resp.json()
+
+    if body.get("result") != "0000":
+        raise ValueError(f"Coros activity API error: {body.get('message', 'unknown error')}")
+
+    data = body.get("data", {})
+    items = data.get("dataList", data.get("list", []))
+    total = data.get("totalCount", len(items))
+    return [_parse_activity(i) for i in items], total
+
+
+async def fetch_activity_detail(auth: StoredAuth, activity_id: str, sport_type: int = 0) -> dict:
+    """
+    Fetch full activity detail including laps, HR zones, and metrics.
+    Returns raw API data dict.
+    Requires sport_type (e.g. 200=Road Bike, 201=Indoor Cycling, 100=Running).
+    """
+    headers = {k: v for k, v in _auth_headers(auth).items() if k != "Content-Type"}
+    url = _base_url(auth.region) + ENDPOINTS["activity_detail"]
+    form_data = {"labelId": activity_id, "userId": auth.user_id, "sportType": str(sport_type)}
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(url, data=form_data, headers=headers)
+        resp.raise_for_status()
+        body = resp.json()
+
+    if body.get("result") != "0000":
+        raise ValueError(f"Coros activity detail API error: {body.get('message', 'unknown error')}")
+
+    data = body.get("data", {})
+    # Strip large time-series arrays that bloat the response
+    for key in ("graphList", "frequencyList", "gpsLightDuration"):
+        data.pop(key, None)
+    return data
 
 
 # ---------------------------------------------------------------------------

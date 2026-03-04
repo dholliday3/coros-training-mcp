@@ -164,6 +164,83 @@ async def get_daily_metrics(weeks: int = 4) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Tool: list_activities
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def list_activities(
+    start_day: str,
+    end_day: str,
+    page: int = 1,
+    size: int = 30,
+) -> dict:
+    """
+    List Coros activities for a date range.
+
+    Parameters
+    ----------
+    start_day : str
+        Start date in YYYYMMDD format.
+    end_day : str
+        End date in YYYYMMDD format.
+    page : int
+        Page number (default 1).
+    size : int
+        Results per page (default 30, max 100).
+
+    Returns
+    -------
+    dict with keys: activities (list), total_count, page
+    Each activity contains: activity_id, name, sport_type, sport_name,
+    start_time, end_time, duration_seconds, distance_meters, avg_hr, max_hr,
+    calories, training_load, avg_power, normalized_power, elevation_gain
+    """
+    auth = coros_api.get_stored_auth()
+    if auth is None:
+        return {"error": "Not authenticated.", "activities": []}
+    try:
+        activities, total = await coros_api.fetch_activities(auth, start_day, end_day, page, size)
+        return {
+            "activities": [a.model_dump() for a in activities],
+            "total_count": total,
+            "page": page,
+        }
+    except Exception as exc:
+        return {"error": str(exc), "activities": []}
+
+
+# ---------------------------------------------------------------------------
+# Tool: get_activity_detail
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def get_activity_detail(activity_id: str, sport_type: int = 0) -> dict:
+    """
+    Fetch full detail for a single Coros activity.
+
+    Parameters
+    ----------
+    activity_id : str
+        The activity ID (labelId) from list_activities.
+    sport_type : int
+        Sport type ID from list_activities (e.g. 200=Road Bike, 201=Indoor Cycling,
+        100=Running). Required for the API call to succeed.
+
+    Returns
+    -------
+    dict with full activity data including laps, HR zones, power metrics,
+    elevation, and all available sport-specific fields.
+    """
+    auth = coros_api.get_stored_auth()
+    if auth is None:
+        return {"error": "Not authenticated."}
+    try:
+        return await coros_api.fetch_activity_detail(auth, activity_id, sport_type)
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
