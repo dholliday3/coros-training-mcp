@@ -1,8 +1,14 @@
-# Getting a Mobile API Token for Sleep Data
+# Getting a Mobile API Token for Sleep Data (Legacy)
+
+> **This guide is no longer needed for new setups.**
+> Since the AES encryption key was reverse-engineered from `libencrypt-lib.so` in the
+> Coros APK, `coros-mcp auth` now obtains a mobile API token automatically with no
+> mitmproxy capture required.
+>
+> Follow this guide only if automatic auth fails or you want to import a token manually.
 
 Sleep data is served by the Coros mobile API (`apieu.coros.com`), which uses a separate
-authentication token from the Training Hub web API. You need to capture this token once
-using a proxy tool — after that, the server refreshes it automatically.
+authentication token from the Training Hub web API.
 
 ## What You Need
 

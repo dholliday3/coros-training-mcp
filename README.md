@@ -95,8 +95,8 @@ You will be prompted for your email, password, and region (`eu`, `us`, or `asia`
 ```bash
 coros-mcp auth-status                    # Check if authenticated
 coros-mcp auth-clear                     # Remove stored token
-coros-mcp extract-from-dump <dump_file>  # Enable sleep data auto-refresh (see below)
-coros-mcp set-mobile-token               # Manually store a mobile token
+coros-mcp extract-from-dump <dump_file>  # Import token from mitmproxy dump (legacy)
+coros-mcp set-mobile-token               # Manually store a mobile token (legacy)
 ```
 
 ---
@@ -178,13 +178,7 @@ Each record includes:
 | `max_hr` | Maximum heart rate during sleep |
 | `quality_score` | Sleep quality score (null if not computed) |
 
-> **Note:** Sleep data is fetched from the Coros mobile API (`apieu.coros.com`), which uses a separate token from the Training Hub web API. The token expires after ~1 hour but **refreshes automatically** as long as a login payload is stored. To enable this, capture a Coros app login via mitmproxy and run:
->
-> ```bash
-> coros-mcp extract-from-dump <your_capture.dump>
-> ```
->
-> This stores both the current token and the encrypted login payload needed for auto-refresh. See [docs/mobile-token.md](docs/mobile-token.md) for mitmproxy capture instructions. As a fallback, `coros-mcp set-mobile-token` lets you paste a token manually (no auto-refresh).
+> **Note:** Sleep data is fetched from the Coros mobile API (`apieu.coros.com`), which uses a separate token from the Training Hub web API. **No extra setup required** — `coros-mcp auth` obtains both tokens automatically using credentials encrypted with the same key as the official Coros app. The token expires after ~1 hour but **refreshes automatically** in the background.
 
 ### `list_activities`
 
