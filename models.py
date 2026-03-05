@@ -47,6 +47,24 @@ class DailyRecord(BaseModel):
     stamina_level_7d: Optional[float] = None       # 7-day fitness trend
 
 
+class ActivitySummary(BaseModel):
+    activity_id: str
+    name: Optional[str] = None
+    sport_type: Optional[int] = None
+    sport_name: Optional[str] = None
+    start_time: Optional[str] = None
+    end_time: Optional[str] = None
+    duration_seconds: Optional[int] = None
+    distance_meters: Optional[float] = None
+    avg_hr: Optional[int] = None
+    max_hr: Optional[int] = None
+    calories: Optional[int] = None
+    training_load: Optional[int] = None
+    avg_power: Optional[int] = None
+    normalized_power: Optional[int] = None
+    elevation_gain: Optional[int] = None
+
+
 class StoredAuth(BaseModel):
     access_token: str
     user_id: str

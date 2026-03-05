@@ -11,6 +11,9 @@ Ask your AI assistant questions like:
 - "What was my HRV trend over the last 4 weeks?"
 - "Show me my resting heart rate and training load for last week"
 - "How many steps did I average per day this month?"
+- "List my rides from last month"
+- "Show me the details of my last long ride"
+- "Create a 90-minute sweet spot workout for me"
 
 ## Features
 
@@ -19,6 +22,10 @@ Ask your AI assistant questions like:
 | `authenticate_coros` | Log in with email and password — token stored securely in keyring |
 | `check_coros_auth` | Check whether a valid auth token is present |
 | `get_daily_metrics` | Fetch daily metrics (HRV, resting HR, training load, VO2max, stamina, and more) for n weeks (default: 4) |
+| `list_activities` | List activities for a date range with summary metrics |
+| `get_activity_detail` | Fetch full detail for a single activity (laps, HR zones, power zones) |
+| `list_workouts` | List all saved structured workout programs |
+| `create_workout` | Create a new structured workout with named steps and power targets |
 
 ---
 
@@ -140,6 +147,64 @@ Each record includes:
 | `ltsp` | analyse (merge) | Lactate threshold pace (s/km) |
 | `stamina_level` | analyse (merge) | Base fitness level |
 | `stamina_level_7d` | analyse (merge) | 7-day fitness trend |
+
+### `list_activities`
+
+List activities for a date range.
+
+```json
+{ "start_day": "20260101", "end_day": "20260305", "page": 1, "size": 30 }
+```
+
+Returns: `activities` (list), `total_count`, `page`
+
+Each activity includes: `activity_id`, `name`, `sport_type`, `sport_name`, `start_time`, `end_time`, `duration_seconds`, `distance_meters`, `avg_hr`, `max_hr`, `calories`, `training_load`, `avg_power`, `normalized_power`, `elevation_gain`
+
+### `get_activity_detail`
+
+Fetch full detail for a single activity. Requires the `sport_type` from `list_activities`.
+
+```json
+{ "activity_id": "469901014965714948", "sport_type": 200 }
+```
+
+Returns full activity data including laps, HR zones, power zones, and all sport-specific metrics.
+
+> **Note:** Large time-series arrays (`graphList`, `frequencyList`, `gpsLightDuration`) are stripped from the response to keep it manageable.
+
+### `list_workouts`
+
+List all saved structured workout programs.
+
+```json
+{}
+```
+
+Returns: `workouts` (list), `count`
+
+Each workout includes: `id`, `name`, `sport_type`, `sport_name`, `estimated_time_seconds`, `exercise_count`, `exercises` (list of steps with `name`, `duration_seconds`, `power_low_w`, `power_high_w`)
+
+### `create_workout`
+
+Create a new structured workout. Workouts appear in the Coros app and can be synced to the watch.
+
+```json
+{
+  "name": "Sweet Spot 90min",
+  "sport_type": 2,
+  "steps": [
+    {"name": "15:00 Einfahren",  "duration_minutes": 15, "power_low_w": 148, "power_high_w": 192},
+    {"name": "20:00 Sweet Spot", "duration_minutes": 20, "power_low_w": 260, "power_high_w": 275},
+    {"name": "5:00 Pause",       "duration_minutes":  5, "power_low_w": 100, "power_high_w": 150},
+    {"name": "20:00 Sweet Spot", "duration_minutes": 20, "power_low_w": 260, "power_high_w": 275},
+    {"name": "30:00 Ausfahren",  "duration_minutes": 30, "power_low_w": 100, "power_high_w": 192}
+  ]
+}
+```
+
+`sport_type`: `2` = Indoor Cycling (default), `200` = Road Bike
+
+Returns: `workout_id`, `name`, `total_minutes`, `steps_count`, `message`
 
 ---
 

@@ -164,6 +164,166 @@ async def get_daily_metrics(weeks: int = 4) -> dict:
 
 
 # ---------------------------------------------------------------------------
+# Tool: list_activities
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def list_activities(
+    start_day: str,
+    end_day: str,
+    page: int = 1,
+    size: int = 30,
+) -> dict:
+    """
+    List Coros activities for a date range.
+
+    Parameters
+    ----------
+    start_day : str
+        Start date in YYYYMMDD format.
+    end_day : str
+        End date in YYYYMMDD format.
+    page : int
+        Page number (default 1).
+    size : int
+        Results per page (default 30, max 100).
+
+    Returns
+    -------
+    dict with keys: activities (list), total_count, page
+    Each activity contains: activity_id, name, sport_type, sport_name,
+    start_time, end_time, duration_seconds, distance_meters, avg_hr, max_hr,
+    calories, training_load, avg_power, normalized_power, elevation_gain
+    """
+    auth = coros_api.get_stored_auth()
+    if auth is None:
+        return {"error": "Not authenticated.", "activities": []}
+    try:
+        activities, total = await coros_api.fetch_activities(auth, start_day, end_day, page, size)
+        return {
+            "activities": [a.model_dump() for a in activities],
+            "total_count": total,
+            "page": page,
+        }
+    except Exception as exc:
+        return {"error": str(exc), "activities": []}
+
+
+# ---------------------------------------------------------------------------
+# Tool: get_activity_detail
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def get_activity_detail(activity_id: str, sport_type: int = 0) -> dict:
+    """
+    Fetch full detail for a single Coros activity.
+
+    Parameters
+    ----------
+    activity_id : str
+        The activity ID (labelId) from list_activities.
+    sport_type : int
+        Sport type ID from list_activities (e.g. 200=Road Bike, 201=Indoor Cycling,
+        100=Running). Required for the API call to succeed.
+
+    Returns
+    -------
+    dict with full activity data including laps, HR zones, power metrics,
+    elevation, and all available sport-specific fields.
+    """
+    auth = coros_api.get_stored_auth()
+    if auth is None:
+        return {"error": "Not authenticated."}
+    try:
+        return await coros_api.fetch_activity_detail(auth, activity_id, sport_type)
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# Tool: list_workouts
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def list_workouts() -> dict:
+    """
+    List all saved workout programs in the Coros account.
+
+    Returns
+    -------
+    dict with keys: workouts (list), count
+    Each workout contains: id, name, sport_type, sport_name,
+    estimated_time_seconds, exercise_count, exercises (list of steps with
+    name, duration_seconds, power_low_w, power_high_w)
+    """
+    auth = coros_api.get_stored_auth()
+    if auth is None:
+        return {"error": "Not authenticated.", "workouts": []}
+    try:
+        workouts = await coros_api.fetch_workouts(auth)
+        return {"workouts": workouts, "count": len(workouts)}
+    except Exception as exc:
+        return {"error": str(exc), "workouts": []}
+
+
+# ---------------------------------------------------------------------------
+# Tool: create_workout
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def create_workout(
+    name: str,
+    steps: list[dict],
+    sport_type: int = 2,
+) -> dict:
+    """
+    Create a new structured workout in the Coros account.
+
+    The workout appears in the Coros app under Workouts and can be synced
+    to the watch for guided execution.
+
+    Parameters
+    ----------
+    name : str
+        Workout name (e.g. "Z2 Erholung 60min").
+    steps : list[dict]
+        List of workout steps. Each step must have:
+          - name (str): step label, e.g. "10:00 Einfahren"
+          - duration_minutes (float): step duration in minutes
+          - power_low_w (int): lower power target in watts
+          - power_high_w (int): upper power target in watts
+        Example:
+          [
+            {"name": "Einfahren", "duration_minutes": 10, "power_low_w": 148, "power_high_w": 192},
+            {"name": "Z2 Block", "duration_minutes": 40, "power_low_w": 192, "power_high_w": 221},
+            {"name": "Ausfahren", "duration_minutes": 10, "power_low_w": 100, "power_high_w": 165},
+          ]
+    sport_type : int
+        Sport type ID. Default 2 = Indoor Cycling (Rollen).
+        Use 200 for Road Bike (outdoor), 201 for Indoor Cycling (alt).
+
+    Returns
+    -------
+    dict with keys: workout_id, name, total_minutes, steps_count, message
+    """
+    auth = coros_api.get_stored_auth()
+    if auth is None:
+        return {"error": "Not authenticated."}
+    try:
+        workout_id = await coros_api.create_workout(auth, name, steps, sport_type)
+        total_minutes = sum(s["duration_minutes"] for s in steps)
+        return {
+            "workout_id": workout_id,
+            "name": name,
+            "total_minutes": total_minutes,
+            "steps_count": len(steps),
+            "message": "Workout created. Open Coros app → Workouts to sync to watch.",
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
