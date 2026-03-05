@@ -80,29 +80,15 @@ The login response contains:
 }
 ```
 
-### 7. Store the token and enable auto-refresh
+### 7. Use the captured token
 
-Save the dump file during capture (recommended):
+The token value from the response can be used directly with the Coros mobile API.
+If you need to store it for debugging or manual testing, save it from the captured
+response JSON (`data.accessToken`).
 
-```bash
-mitmdump -w coros_login.dump
-```
-
-Then extract the token and login payload in one step:
-
-```bash
-coros-mcp extract-from-dump coros_login.dump
-```
-
-This stores both the current token **and** the encrypted login payload. The server will
-automatically refresh the token when it expires — no repeat capture needed.
-
-**Alternative (no auto-refresh):** If you only have the token string, run:
-
-```bash
-coros-mcp set-mobile-token
-# Paste the accessToken value when prompted
-```
+> In normal operation you don't need to do anything with this token — `coros-mcp auth`
+> handles the full mobile login automatically using the AES encryption scheme described
+> below.
 
 ### 8. Clean up
 
@@ -110,12 +96,9 @@ Remove the proxy settings from your Android device's Wi-Fi configuration.
 
 ## Token Lifetime
 
-The mobile token expires after approximately 1 hour. When `extract-from-dump` has been
-used, the server refreshes it automatically in the background — `get_sleep_data` will
-always work without any manual intervention.
-
-If only `set-mobile-token` was used (no auto-refresh), re-run the capture and
-`extract-from-dump` once to permanently enable auto-refresh.
+The mobile token expires after approximately 1 hour. `coros-mcp auth` stores the
+encrypted login payload alongside the token, and the server replays it automatically
+to refresh — `get_sleep_data` always works without any manual intervention.
 
 ## Security Note
 
