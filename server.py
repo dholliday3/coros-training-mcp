@@ -436,6 +436,156 @@ async def create_workout(
 
 
 # ---------------------------------------------------------------------------
+# Tool: list_planned_activities
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def list_planned_activities(
+    start_day: str,
+    end_day: str,
+) -> dict:
+    """
+    List planned (scheduled) activities from the Coros training calendar.
+
+    Parameters
+    ----------
+    start_day : str
+        Start date in YYYYMMDD format.
+    end_day : str
+        End date in YYYYMMDD format.
+
+    Returns
+    -------
+    dict with keys: activities (list of raw scheduled items), count, date_range
+    """
+    auth = coros_api.get_stored_auth()
+    if auth is None:
+        return {"error": "Not authenticated. Call authenticate_coros first.", "activities": []}
+    try:
+        items = await coros_api.fetch_schedule(auth, start_day, end_day)
+        return {
+            "activities": items,
+            "count": len(items),
+            "date_range": f"{start_day} – {end_day}",
+        }
+    except Exception as exc:
+        return {"error": str(exc), "activities": []}
+
+
+# ---------------------------------------------------------------------------
+# Tool: schedule_workout
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def schedule_workout(
+    workout_id: str,
+    happen_day: str,
+    sort_no: int = 1,
+) -> dict:
+    """
+    Add an existing workout from the library to the Coros training calendar.
+
+    Parameters
+    ----------
+    workout_id : str
+        ID of the workout to schedule (from list_workouts or create_workout).
+    happen_day : str
+        Date in YYYYMMDD format.
+    sort_no : int
+        Order within the day if multiple workouts are scheduled (default 1).
+
+    Returns
+    -------
+    dict with keys: scheduled, workout_id, happen_day
+    """
+    auth = coros_api.get_stored_auth()
+    if auth is None:
+        return {"error": "Not authenticated."}
+    try:
+        await coros_api.schedule_workout(auth, workout_id, happen_day, sort_no)
+        return {"scheduled": True, "workout_id": workout_id, "happen_day": happen_day}
+    except Exception as exc:
+        return {"error": str(exc), "scheduled": False}
+
+
+# ---------------------------------------------------------------------------
+# Tool: create_strength_workout
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def create_strength_workout(
+    name: str,
+    exercises: list[dict],
+    sets: int = 1,
+) -> dict:
+    """
+    Create a new structured strength workout program.
+
+    Parameters
+    ----------
+    name : str
+        Workout name.
+    exercises : list of dicts, each with:
+        - origin_id (str): exercise catalogue ID from list_exercises
+        - name (str): T-code name (e.g. "T1061")
+        - overview (str): sid_ key (e.g. "sid_strength_squats")
+        - target_type (int): 2=time in seconds, 3=reps
+        - target_value (int): number of seconds or reps
+        - rest_seconds (int): rest after this exercise (default 60)
+    sets : int
+        Number of circuit repetitions (default 1).
+
+    Returns
+    -------
+    dict with keys: workout_id, name, sets, exercise_count
+    """
+    auth = coros_api.get_stored_auth()
+    if auth is None:
+        return {"error": "Not authenticated."}
+    try:
+        workout_id = await coros_api.create_strength_workout(auth, name, exercises, sets)
+        return {
+            "workout_id": workout_id,
+            "name": name,
+            "sets": sets,
+            "exercise_count": len(exercises),
+        }
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# Tool: list_exercises
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def list_exercises(sport_type: int = 4) -> dict:
+    """
+    List the exercise catalogue for a given sport type.
+
+    Useful for resolving strength/conditioning exercises (sport_type=4)
+    that appear in planned workouts by name and ID.
+
+    Parameters
+    ----------
+    sport_type : int
+        Sport type ID. Default 4 = Strength.
+
+    Returns
+    -------
+    dict with keys: exercises (list), count, sport_type
+    """
+    auth = coros_api.get_stored_auth()
+    if auth is None:
+        return {"error": "Not authenticated.", "exercises": []}
+    try:
+        items = await coros_api.fetch_exercises(auth, sport_type)
+        return {"exercises": items, "count": len(items), "sport_type": sport_type}
+    except Exception as exc:
+        return {"error": str(exc), "exercises": []}
+
+
+# ---------------------------------------------------------------------------
 # Entry point
 # ---------------------------------------------------------------------------
 
