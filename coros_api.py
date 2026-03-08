@@ -40,6 +40,10 @@ ENDPOINTS = {
     "sport_types": "/activity/fit/getImportSportList",
     "workout_list": "/training/program/query",  # POST — list/fetch workout programs
     "workout_add": "/training/program/add",     # POST — create new structured workout
+    "schedule_sum": "/training/schedule/querysum",  # GET — planned calendar aggregates
+    "schedule": "/training/schedule/query",         # GET — planned calendar detail
+    "schedule_update": "/training/schedule/update", # POST — add workout to calendar
+    "exercises": "/training/exercise/query",        # GET — exercise catalogue by sport type
 }
 
 # Login works on teamapi.coros.com but tokens are only valid on the
@@ -609,6 +613,378 @@ async def create_workout(
         raise ValueError(f"Coros workout create error: {body.get('message', 'unknown error')}")
 
     return str(body.get("data", ""))
+
+
+# ---------------------------------------------------------------------------
+# Planned activities (training schedule calendar)
+# ---------------------------------------------------------------------------
+
+async def fetch_schedule(
+    auth: StoredAuth, start_day: str, end_day: str
+) -> list[dict]:
+    """
+    Fetch planned activities from the Coros training calendar.
+
+    Uses GET /training/schedule/querysum with startDate/endDate params.
+    start_day / end_day: YYYYMMDD strings.
+    Returns the raw list of scheduled items.
+    """
+    params = {
+        "startDate": start_day,
+        "endDate": end_day,
+        "supportRestExercise": 1,
+    }
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(
+            _base_url(auth.region) + ENDPOINTS["schedule"],
+            params=params,
+            headers=_auth_headers(auth),
+        )
+        resp.raise_for_status()
+        body = resp.json()
+
+    if body.get("result") != "0000":
+        raise ValueError(f"Coros schedule API error: {body.get('message', 'unknown error')}")
+
+    return _strip_schedule(body.get("data") or {})
+
+
+_EXERCISE_DROP = {
+    "videoInfos", "videoUrl", "videoUrlArrStr", "coverUrlArrStr",
+    "thumbnailUrl", "sourceUrl", "animationId",
+    "access", "deleted", "defaultOrder", "status", "createTimestamp",
+    "userId", "muscle", "muscleRelevance", "part", "equipment",
+    "sortNo", "originId", "isDefaultAdd", "intensityCustom",
+    "intensityDisplayUnit", "isIntensityPercent",
+}
+
+_PROGRAM_DROP = {
+    "exerciseBarChart", "headPic", "profile", "sex", "star", "nickname",
+    "essence", "originEssence", "access", "authorId", "deleted", "pbVersion",
+    "version", "status", "createTimestamp", "thirdPartyId",
+    "isTargetTypeConsistent", "pitch", "simple", "unit",
+    "distanceDisplayUnit", "elevGain", "estimatedDistance", "estimatedTime",
+    "estimatedType", "strengthType", "targetType", "targetValue",
+    "planId", "planIdIndex", "userId",
+}
+
+_ENTITY_DROP = {
+    "exerciseBarChart", "completeRate", "score", "standardRate",
+    "dayNo", "operateUserId", "thirdParty", "thirdPartyId",
+    "sortNo", "sortNoInSchedule", "userId", "planId", "planIdIndex",
+}
+
+_TOP_DROP = {
+    "sportDatasInPlan", "sportDatasNotInPlan", "likeTpIds", "starTimestamp",
+    "score", "sourceUrl", "inSchedule", "pauseInApp", "access", "authorId",
+    "category", "pbVersion", "version", "thirdPartyId", "maxIdInPlan",
+    "maxPlanProgramId", "weekStages", "subPlans", "userInfos",
+    "type", "unit", "totalDay", "status", "startDay", "createTime",
+    "updateTimestamp", "userId",
+}
+
+
+def _readable_overview(overview: str) -> str:
+    """Convert 'sid_strength_squats' → 'Squats', 'sid_run_warm_up_dist' → 'Run warm up dist'."""
+    for prefix in ("sid_strength_", "sid_run_", "sid_"):
+        if overview.startswith(prefix):
+            overview = overview[len(prefix):]
+            break
+    return overview.replace("_", " ").capitalize()
+
+
+def _strip_exercise(ex: dict) -> dict:
+    out = {k: v for k, v in ex.items() if k not in _EXERCISE_DROP}
+    if "overview" in out:
+        out["overview"] = _readable_overview(out["overview"])
+    return out
+
+
+def _strip_program(prog: dict) -> dict:
+    out = {k: v for k, v in prog.items() if k not in _PROGRAM_DROP}
+    if "exercises" in out:
+        out["exercises"] = [_strip_exercise(e) for e in out["exercises"]]
+    return out
+
+
+def _strip_schedule(data: dict) -> dict:
+    out = {k: v for k, v in data.items() if k not in _TOP_DROP}
+    if "entities" in out:
+        out["entities"] = [
+            {k: v for k, v in e.items() if k not in _ENTITY_DROP}
+            for e in out["entities"]
+        ]
+    if "programs" in out:
+        out["programs"] = [_strip_program(p) for p in out["programs"]]
+    return out
+
+
+async def create_strength_workout(
+    auth: StoredAuth,
+    name: str,
+    exercises: list[dict],
+    sets: int = 1,
+) -> str:
+    """
+    Create a new structured strength workout program.
+
+    exercises: list of dicts with keys:
+      - origin_id: str  — exercise catalogue ID (from list_exercises)
+      - name: str       — T-code name (e.g. "T1061")
+      - overview: str   — sid_ key (e.g. "sid_strength_squats")
+      - target_type: int — 2=time (seconds), 3=reps
+      - target_value: int — seconds or reps
+      - rest_seconds: int — rest after this exercise
+
+    sets: number of circuit repetitions.
+
+    Returns the new workout ID.
+    """
+    built = []
+    total_duration = 0
+    for i, ex in enumerate(exercises):
+        target_value = ex["target_value"]
+        rest = ex.get("rest_seconds", 60)
+        total_duration += (target_value if ex["target_type"] == 2 else 0) + rest
+        built.append({
+            "access": 0,
+            "createTimestamp": 0,
+            "defaultOrder": i,
+            "exerciseType": 2,
+            "id": i + 1,
+            "intensityCustom": 0,
+            "intensityDisplayUnit": "6",
+            "intensityMultiplier": 0,
+            "intensityPercent": 0,
+            "intensityPercentExtend": 0,
+            "intensityType": 1,
+            "intensityValue": 0,
+            "intensityValueExtend": 0,
+            "isDefaultAdd": 0,
+            "isGroup": False,
+            "isIntensityPercent": False,
+            "hrType": 0,
+            "name": ex.get("name", ""),
+            "originId": ex["origin_id"],
+            "overview": ex.get("overview", "sid_strength_training"),
+            "part": [0],
+            "groupId": "",
+            "restType": 1,
+            "restValue": rest,
+            "sets": 1,
+            "sortNo": i,
+            "sourceUrl": "",
+            "sportType": 4,
+            "status": 1,
+            "targetDisplayUnit": 0,
+            "targetType": ex["target_type"],
+            "targetValue": target_value,
+            "userId": 0,
+            "videoInfos": [],
+            "videoUrl": "",
+        })
+
+    total_duration *= sets
+    payload = {
+        "access": 1,
+        "authorId": "0",
+        "createTimestamp": 0,
+        "distance": "0",
+        "duration": total_duration,
+        "essence": 0,
+        "estimatedType": 0,
+        "estimatedValue": 0,
+        "exerciseNum": len(exercises),
+        "exercises": built,
+        "headPic": "",
+        "id": "0",
+        "idInPlan": "0",
+        "name": name,
+        "nickname": "",
+        "originEssence": 0,
+        "overview": "",
+        "pbVersion": 2,
+        "pitch": 0,
+        "planIdIndex": 0,
+        "poolLength": 2500,
+        "poolLengthId": 1,
+        "poolLengthUnit": 2,
+        "profile": "",
+        "referExercise": {"intensityType": 1, "hrType": 0, "valueType": 1},
+        "sex": 0,
+        "sets": sets,
+        "shareUrl": "",
+        "simple": False,
+        "sourceId": "425868113867882496",
+        "sourceUrl": "",
+        "sportType": 4,
+        "star": 0,
+        "subType": 65535,
+        "targetType": 0,
+        "targetValue": 0,
+        "thirdPartyId": 0,
+        "totalSets": sets,
+        "trainingLoad": 0,
+        "type": 0,
+        "unit": 0,
+        "userId": "0",
+        "version": 0,
+        "videoCoverUrl": "",
+        "videoUrl": "",
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            _base_url(auth.region) + ENDPOINTS["workout_add"],
+            json=payload,
+            headers=_auth_headers(auth),
+        )
+        resp.raise_for_status()
+        body = resp.json()
+
+    if body.get("result") != "0000":
+        raise ValueError(f"Coros strength workout create error: {body.get('message', 'unknown error')}")
+
+    return str(body.get("data", ""))
+
+
+async def _fetch_raw_workout(auth: StoredAuth, workout_id: str) -> Optional[dict]:
+    """Return the raw workout object for a given ID from the workout list."""
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            _base_url(auth.region) + ENDPOINTS["workout_list"],
+            json={},
+            headers=_auth_headers(auth),
+        )
+        resp.raise_for_status()
+        body = resp.json()
+    for w in body.get("data", []):
+        if str(w.get("id", "")) == str(workout_id):
+            return w
+    return None
+
+
+async def schedule_workout(
+    auth: StoredAuth,
+    workout_id: str,
+    happen_day: str,
+    sort_no: int = 1,
+) -> None:
+    """
+    Add an existing workout to the Coros training calendar.
+
+    happen_day: YYYYMMDD string.
+    sort_no: order within the day (1 = first workout).
+    """
+    # Get raw workout object
+    program = await _fetch_raw_workout(auth, workout_id)
+    if program is None:
+        raise ValueError(f"Workout {workout_id} not found in library.")
+
+    # Fetch schedule to get maxIdInPlan (raw, not stripped)
+    params = {
+        "startDate": happen_day,
+        "endDate": happen_day,
+        "supportRestExercise": 1,
+    }
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(
+            _base_url(auth.region) + ENDPOINTS["schedule"],
+            params=params,
+            headers=_auth_headers(auth),
+        )
+        resp.raise_for_status()
+        schedule_body = resp.json()
+
+    raw_data = schedule_body.get("data") or {}
+    try:
+        id_in_plan = int(raw_data.get("maxIdInPlan", 0)) + 1
+    except (TypeError, ValueError):
+        id_in_plan = 1
+
+    program["idInPlan"] = id_in_plan
+
+    payload = {
+        "entities": [{
+            "happenDay": happen_day,
+            "idInPlan": id_in_plan,
+            "sortNoInSchedule": sort_no,
+        }],
+        "programs": [program],
+        "versionObjects": [{"id": id_in_plan, "status": 1}],
+        "pbVersion": 2,
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            _base_url(auth.region) + ENDPOINTS["schedule_update"],
+            json=payload,
+            headers=_auth_headers(auth),
+        )
+        resp.raise_for_status()
+        body = resp.json()
+
+    if body.get("result") != "0000":
+        raise ValueError(f"Coros schedule update error: {body.get('message', 'unknown error')}")
+
+
+async def remove_scheduled_workout(
+    auth: StoredAuth,
+    plan_id: str,
+    id_in_plan: str,
+    plan_program_id: Optional[str] = None,
+) -> None:
+    """
+    Remove a scheduled workout from the Coros training calendar.
+
+    plan_id: top-level plan ID (the 'id' field from list_planned_activities).
+    id_in_plan: entity's idInPlan value.
+    plan_program_id: entity's planProgramId (defaults to id_in_plan if omitted).
+    """
+    payload = {
+        "versionObjects": [{
+            "id": id_in_plan,
+            "planProgramId": plan_program_id or id_in_plan,
+            "planId": plan_id,
+            "status": 3,  # 3 = delete
+        }],
+        "pbVersion": 2,
+    }
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            _base_url(auth.region) + ENDPOINTS["schedule_update"],
+            json=payload,
+            headers=_auth_headers(auth),
+        )
+        resp.raise_for_status()
+        body = resp.json()
+
+    if body.get("result") != "0000":
+        raise ValueError(f"Coros schedule delete error: {body.get('message', 'unknown error')}")
+
+
+async def fetch_exercises(auth: StoredAuth, sport_type: int) -> list[dict]:
+    """
+    Fetch the exercise catalogue for a given sport type.
+
+    Used to look up strength/conditioning exercises (e.g. sport_type=4 for
+    strength) that appear in planned workouts but have no inline detail.
+    Returns the raw list of exercise definitions.
+    """
+    params = {"userId": auth.user_id, "sportType": sport_type}
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(
+            _base_url(auth.region) + ENDPOINTS["exercises"],
+            params=params,
+            headers=_auth_headers(auth),
+        )
+        resp.raise_for_status()
+        body = resp.json()
+
+    if body.get("result") != "0000":
+        raise ValueError(f"Coros exercise API error: {body.get('message', 'unknown error')}")
+
+    return body.get("data", []) or []
 
 
 # ---------------------------------------------------------------------------
