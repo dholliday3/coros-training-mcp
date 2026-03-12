@@ -32,6 +32,7 @@ Ask your AI assistant questions like:
 | `get_activity_detail` | Fetch full detail for a single activity (laps, HR zones, power zones) |
 | `list_workouts` | List all saved structured workout programs |
 | `create_workout` | Create a new structured workout with named steps and power targets |
+| `delete_workout` | Delete a workout program from the library |
 | `list_planned_activities` | List planned workouts from the Coros training calendar |
 | `schedule_workout` | Schedule an existing workout on a calendar day |
 | `remove_scheduled_workout` | Remove a scheduled workout from the calendar |
@@ -255,6 +256,18 @@ Create a new structured workout. Workouts appear in the Coros app and can be syn
 `sport_type`: `2` = Indoor Cycling (default), `200` = Road Bike
 
 Returns: `workout_id`, `name`, `total_minutes`, `steps_count`, `message`
+
+### `delete_workout`
+
+Delete a workout program from the Coros account.
+
+```json
+{ "workout_id": "476023839273435149" }
+```
+
+The `workout_id` comes from `list_workouts`.
+
+Returns: `deleted`, `workout_id`, `message`
 
 ### `list_planned_activities`
 
