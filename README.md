@@ -31,7 +31,7 @@ Ask your AI assistant questions like:
 | `list_activities` | List activities for a date range with summary metrics |
 | `get_activity_detail` | Fetch full detail for a single activity (laps, HR zones, power zones) |
 | `list_workouts` | List all saved structured workout programs |
-| `create_workout` | Create a new structured workout with named steps and power targets |
+| `create_workout` | Create a new structured workout with steps, power targets, and repeat groups |
 | `list_planned_activities` | List planned workouts from the Coros training calendar |
 | `schedule_workout` | Schedule an existing workout on a calendar day |
 | `remove_scheduled_workout` | Remove a scheduled workout from the calendar |
@@ -238,7 +238,9 @@ Each workout includes: `id`, `name`, `sport_type`, `sport_name`, `estimated_time
 
 ### `create_workout`
 
-Create a new structured workout. Workouts appear in the Coros app and can be synced to the watch.
+Create a new structured workout. Workouts appear in the Coros app and can be synced to the watch. Steps can be plain steps or repeat groups for intervals.
+
+**Plain steps:**
 
 ```json
 {
@@ -250,6 +252,23 @@ Create a new structured workout. Workouts appear in the Coros app and can be syn
     {"name": "5:00 Pause",       "duration_minutes":  5, "power_low_w": 100, "power_high_w": 150},
     {"name": "20:00 Sweet Spot", "duration_minutes": 20, "power_low_w": 260, "power_high_w": 275},
     {"name": "30:00 Ausfahren",  "duration_minutes": 30, "power_low_w": 100, "power_high_w": 192}
+  ]
+}
+```
+
+**With repeat groups (intervals):**
+
+```json
+{
+  "name": "3×10min Sweetspot",
+  "sport_type": 2,
+  "steps": [
+    {"name": "Einfahren", "duration_minutes": 10, "power_low_w": 150, "power_high_w": 200},
+    {"repeat": 3, "steps": [
+      {"name": "Sweetspot", "duration_minutes": 10, "power_low_w": 265, "power_high_w": 285},
+      {"name": "Erholung",  "duration_minutes":  3, "power_low_w": 150, "power_high_w": 175}
+    ]},
+    {"name": "Ausfahren", "duration_minutes": 11, "power_low_w": 150, "power_high_w": 200}
   ]
 }
 ```
