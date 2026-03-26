@@ -74,7 +74,14 @@ uv pip install -e .
 #### Step 2: Add to Claude Code
 
 ```bash
-claude mcp add coros -- python /path/to/coros-mcp/server.py
+claude mcp add coros -- /path/to/coros-mcp/.venv/bin/coros-mcp serve
+```
+
+To limit the MCP to a specific project only (recommended):
+
+```bash
+cd /path/to/your/project
+claude mcp add --scope project coros -- /path/to/coros-mcp/.venv/bin/coros-mcp serve
 ```
 
 Or add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):
@@ -83,14 +90,28 @@ Or add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_c
 {
   "mcpServers": {
     "coros": {
-      "command": "/path/to/coros-mcp/.venv/bin/python",
-      "args": ["/path/to/coros-mcp/server.py"]
+      "command": "/path/to/coros-mcp/.venv/bin/coros-mcp",
+      "args": ["serve"]
     }
   }
 }
 ```
 
 #### Step 3: Authenticate
+
+**Option A — `.env` file (recommended for project-scoped setups):**
+
+Create a `.env` file in your project directory:
+
+```
+COROS_EMAIL=you@example.com
+COROS_PASSWORD=yourpassword
+COROS_REGION=eu
+```
+
+The server authenticates automatically on the first request and re-authenticates transparently whenever the token expires. No manual auth step needed.
+
+**Option B — Manual authentication:**
 
 Run the following command in your terminal — **outside** of any Claude session:
 
@@ -105,6 +126,7 @@ You will be prompted for your email, password, and region (`eu`, `us`, or `asia`
 **Other auth commands:**
 
 ```bash
+coros-mcp serve         # Start the MCP server (used by Claude Code / Claude Desktop)
 coros-mcp auth-web      # Web API only — skips mobile login (sleep data obtained lazily)
 coros-mcp auth-mobile   # Mobile API only (sleep data)
 coros-mcp auth-status   # Check if authenticated
@@ -386,7 +408,7 @@ coros-mcp/
 ├── server.py          # MCP server with tool definitions
 ├── coros_api.py       # Coros API client (auth, requests, parsers)
 ├── models.py          # Pydantic data models
-├── cli.py             # CLI commands (auth, auth-mobile, auth-status, auth-clear)
+├── cli.py             # CLI entry point (serve, auth, auth-mobile, auth-status, auth-clear)
 ├── auth/              # Token storage (keyring + encrypted file fallback)
 ├── pyproject.toml     # Project metadata & dependencies
 └── docs/

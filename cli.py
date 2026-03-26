@@ -130,11 +130,19 @@ def cmd_auth_clear() -> int:
         return 1
 
 
+def cmd_serve() -> int:
+    """Start the MCP server (stdio mode)."""
+    import server
+    server.main()
+    return 0
+
+
 def cmd_help() -> int:
     print(
         """Coros MCP Server — CLI
 
 Usage:
+  coros-mcp serve         Start the MCP server (used by Claude Code)
   coros-mcp auth          Authenticate with your Coros account (web + mobile)
   coros-mcp auth-web      Authenticate web API only (no sleep data)
   coros-mcp auth-mobile   Authenticate mobile API only (sleep data)
@@ -149,6 +157,7 @@ Usage:
 def main() -> None:
     command = sys.argv[1] if len(sys.argv) > 1 else "help"
     commands = {
+        "serve": cmd_serve,
         "auth": cmd_auth,
         "auth-web": cmd_auth_web,
         "auth-mobile": cmd_auth_mobile,
