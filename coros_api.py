@@ -289,7 +289,13 @@ async def try_auto_login() -> Optional[StoredAuth]:
         return None
     email, password, region = creds
     try:
-        return await login(email, password, region)
+        existing = _load_auth()
+        # If a mobile token or replay payload already exists, skip mobile re-login
+        # to avoid kicking the user out of the Coros mobile app.
+        skip_mobile = existing is not None and bool(
+            existing.mobile_access_token or existing.mobile_login_payload
+        )
+        return await login(email, password, region, skip_mobile=skip_mobile)
     except Exception:
         return None
 
