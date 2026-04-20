@@ -1,6 +1,8 @@
-# coros-mcp
+# coros-training-mcp
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that fetches sleep, HRV, and training data from the unofficial Coros API and exposes them to AI assistants like Claude.
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for COROS training data, workout authoring, workout scheduling, and builder-aware agent tooling.
+
+This project is built on top of [cygnusb/coros-mcp](https://github.com/cygnusb/coros-mcp) and keeps that repository as an upstream reference. It extends the original project with workout taxonomy docs, sport-specific running tools, live builder catalog extraction, shared run-step schemas, and a much broader automated test suite.
 
 **No API key required.** This server authenticates directly with your Coros Training Hub credentials. Your token is stored securely in your system keyring (or an encrypted local file as fallback), never transmitted anywhere except to Coros.
 
@@ -78,7 +80,7 @@ For automated enum discovery from public Training Hub assets and the live Traini
 If you have [Claude Code](https://claude.ai/code), paste this prompt:
 
 ```
-Set up the Coros MCP server from https://github.com/cygnusb/coros-mcp — clone it, create a venv, install it with pip install -e ., add it to my MCP config, then tell me to run 'coros-mcp auth' in my terminal to authenticate.
+Set up the COROS Training MCP server from https://github.com/dholliday3/coros-training-mcp — clone it, create a venv, install it with pip install -e ., add it to my MCP config, then tell me to run 'coros-mcp auth' in my terminal to authenticate.
 ```
 
 Claude will handle the installation and guide you through configuration.
@@ -88,8 +90,8 @@ Claude will handle the installation and guide you through configuration.
 #### Step 1: Install
 
 ```bash
-git clone https://github.com/cygnusb/coros-mcp.git
-cd coros-mcp
+git clone https://github.com/dholliday3/coros-training-mcp.git
+cd coros-training-mcp
 python3 -m venv .venv
 source .venv/bin/activate  # Windows: .venv\Scripts\activate
 pip install -e .
@@ -104,14 +106,14 @@ uv pip install -e .
 #### Step 2: Add to Claude Code
 
 ```bash
-claude mcp add coros -- /path/to/coros-mcp/.venv/bin/coros-mcp serve
+claude mcp add coros -- /path/to/coros-training-mcp/.venv/bin/coros-mcp serve
 ```
 
 To limit the MCP to a specific project only (recommended):
 
 ```bash
 cd /path/to/your/project
-claude mcp add --scope project coros -- /path/to/coros-mcp/.venv/bin/coros-mcp serve
+claude mcp add --scope project coros -- /path/to/coros-training-mcp/.venv/bin/coros-mcp serve
 ```
 
 Or add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):
@@ -120,7 +122,7 @@ Or add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_c
 {
   "mcpServers": {
     "coros": {
-      "command": "/path/to/coros-mcp/.venv/bin/coros-mcp",
+      "command": "/path/to/coros-training-mcp/.venv/bin/coros-mcp",
       "args": ["serve"]
     }
   }
