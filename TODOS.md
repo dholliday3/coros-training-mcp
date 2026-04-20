@@ -32,6 +32,7 @@ This file tracks the actionable work for the fork. Strategy, scope, and architec
 - [x] Shorten or lengthen warm-up and cool-down
 - [ ] Change rep count with verified live running data
 - [ ] Change target pace with verified COROS running intensity enums
+- [ ] Add ergonomic parsing for human run pace inputs such as `4:10-4:20 /km` and map them onto the shared run intensity fields
 
 ## Sport-Specific Tooling
 
