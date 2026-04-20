@@ -75,12 +75,44 @@ For automated enum discovery from public Training Hub assets and the live Traini
 
 ## Setup
 
+### Recommended Local Setup
+
+For local use on macOS, the recommended path in this repo is:
+
+1. install the repo into a local virtualenv
+2. store COROS credentials in macOS Keychain
+3. point your MCP client at the included wrapper script [run-coros-mcp.zsh](./run-coros-mcp.zsh)
+
+That gives you:
+
+- no plaintext COROS credentials in your MCP config
+- automatic `COROS_EMAIL` / `COROS_PASSWORD` loading at process start
+- a default `COROS_REGION` value with local override support
+
+The wrapper expects these Keychain items:
+
+- service `coros-mcp-email`
+- service `coros-mcp-password`
+
+Add them with:
+
+```bash
+security add-generic-password -U -a "$USER" -s "coros-mcp-email" -w "you@example.com"
+security add-generic-password -U -a "$USER" -s "coros-mcp-password" -w "your-coros-password"
+```
+
+Then point your MCP client at:
+
+```bash
+/path/to/coros-training-mcp/run-coros-mcp.zsh
+```
+
 ### Option A: Auto-Setup with Claude Code
 
 If you have [Claude Code](https://claude.ai/code), paste this prompt:
 
 ```
-Set up the COROS Training MCP server from https://github.com/dholliday3/coros-training-mcp — clone it, create a venv, install it with pip install -e ., add it to my MCP config, then tell me to run 'coros-mcp auth' in my terminal to authenticate.
+Set up the COROS Training MCP server from https://github.com/dholliday3/coros-training-mcp — clone it, create a venv, install it with pip install -e ., configure the included run-coros-mcp.zsh wrapper for MCP, and tell me how to add my COROS credentials to macOS Keychain.
 ```
 
 Claude will handle the installation and guide you through configuration.
@@ -103,7 +135,21 @@ Or with `uv`:
 uv pip install -e .
 ```
 
-#### Step 2: Add to Claude Code
+#### Step 2: Add to Your MCP Client
+
+Recommended on macOS:
+
+```bash
+claude mcp add coros -- /path/to/coros-training-mcp/run-coros-mcp.zsh
+```
+
+Or for Codex:
+
+```bash
+codex mcp add coros -- /path/to/coros-training-mcp/run-coros-mcp.zsh
+```
+
+If you prefer to launch the raw binary directly instead of the wrapper:
 
 ```bash
 claude mcp add coros -- /path/to/coros-training-mcp/.venv/bin/coros-mcp serve
@@ -122,16 +168,36 @@ Or add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_c
 {
   "mcpServers": {
     "coros": {
-      "command": "/path/to/coros-training-mcp/.venv/bin/coros-mcp",
-      "args": ["serve"]
+      "command": "/path/to/coros-training-mcp/run-coros-mcp.zsh"
     }
   }
 }
 ```
 
-#### Step 3: Authenticate
+#### Step 3: Configure Credentials
 
-**Option A — `.env` file (recommended for project-scoped setups):**
+**Option A — macOS Keychain + wrapper script (recommended for local use):**
+
+Add the expected Keychain items:
+
+```bash
+security add-generic-password -U -a "$USER" -s "coros-mcp-email" -w "you@example.com"
+security add-generic-password -U -a "$USER" -s "coros-mcp-password" -w "your-coros-password"
+```
+
+Then verify the wrapper can read them:
+
+```bash
+/path/to/coros-training-mcp/run-coros-mcp.zsh auth-status
+```
+
+You can override the default region if needed:
+
+```bash
+COROS_REGION=eu /path/to/coros-training-mcp/run-coros-mcp.zsh auth-status
+```
+
+**Option B — `.env` file:**
 
 Create a `.env` file in your project directory:
 
@@ -143,7 +209,7 @@ COROS_REGION=eu
 
 The server authenticates automatically on the first request and re-authenticates transparently whenever the token expires. No manual auth step needed.
 
-**Option B — Manual authentication:**
+**Option C — Manual authentication:**
 
 Run the following command in your terminal — **outside** of any Claude session:
 
@@ -158,6 +224,8 @@ You will be prompted for your email, password, and region (`eu`, `us`, or `asia`
 **Other auth commands:**
 
 ```bash
+/path/to/coros-training-mcp/run-coros-mcp.zsh        # start via Keychain-backed wrapper
+/path/to/coros-training-mcp/run-coros-mcp.zsh auth-status
 coros-mcp serve         # Start the MCP server (used by Claude Code / Claude Desktop)
 coros-mcp auth-web      # Web API only — skips mobile login (sleep data obtained lazily)
 coros-mcp auth-mobile   # Mobile API only (sleep data)
