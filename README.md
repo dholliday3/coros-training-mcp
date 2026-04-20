@@ -107,6 +107,27 @@ Then point your MCP client at:
 /path/to/coros-training-mcp/run-coros-mcp.zsh
 ```
 
+### Standard Cross-Platform Path
+
+If you are not on macOS, or you would rather avoid the wrapper script, the more standard setup path is:
+
+1. install the repo into a local virtualenv
+2. run the raw `coros-mcp` binary from that virtualenv
+3. provide credentials via a local `.env` file or MCP-scoped environment variables
+
+That looks like:
+
+```bash
+/path/to/coros-training-mcp/.venv/bin/coros-mcp serve
+```
+
+This path is a better fit when:
+
+- you want the most typical Python MCP server setup
+- you are using Linux or Windows
+- you prefer explicit env vars over macOS Keychain integration
+- you want the same launch pattern as the upstream `cygnusb/coros-mcp` repo
+
 ### Option A: Auto-Setup with Claude Code
 
 If you have [Claude Code](https://claude.ai/code), paste this prompt:
@@ -155,6 +176,12 @@ If you prefer to launch the raw binary directly instead of the wrapper:
 claude mcp add coros -- /path/to/coros-training-mcp/.venv/bin/coros-mcp serve
 ```
 
+Equivalent Codex example:
+
+```bash
+codex mcp add coros -- /path/to/coros-training-mcp/.venv/bin/coros-mcp serve
+```
+
 To limit the MCP to a specific project only (recommended):
 
 ```bash
@@ -169,6 +196,19 @@ Or add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_c
   "mcpServers": {
     "coros": {
       "command": "/path/to/coros-training-mcp/run-coros-mcp.zsh"
+    }
+  }
+}
+```
+
+Or, for the standard raw-binary path:
+
+```json
+{
+  "mcpServers": {
+    "coros": {
+      "command": "/path/to/coros-training-mcp/.venv/bin/coros-mcp",
+      "args": ["serve"]
     }
   }
 }
@@ -208,6 +248,8 @@ COROS_REGION=eu
 ```
 
 The server authenticates automatically on the first request and re-authenticates transparently whenever the token expires. No manual auth step needed.
+
+If your MCP client supports inline env vars, that works too. For example, the same raw-binary setup can be configured with `COROS_EMAIL`, `COROS_PASSWORD`, and `COROS_REGION` set in the MCP server environment instead of using a `.env` file.
 
 **Option C — Manual authentication:**
 
