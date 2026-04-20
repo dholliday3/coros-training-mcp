@@ -1,6 +1,7 @@
 .claude/
 .env
 .playwright-mcp/
+.playwright-browsers/
 .venv/
 __pycache__/
 har/

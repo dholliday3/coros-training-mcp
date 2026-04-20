@@ -7,6 +7,7 @@ Sleep phase data comes from the mobile API (/coros/data/statistic/daily on apieu
 """
 
 import asyncio
+import copy
 import hashlib
 import json
 import os
@@ -39,6 +40,7 @@ ENDPOINTS = {
     "sleep": "/coros/data/statistic/daily",  # mobile API (apieu.coros.com)
     "activity_list": "/activity/query",
     "activity_detail": "/activity/detail/query",
+    "activity_download": "/activity/detail/download",
     "sport_types": "/activity/fit/getImportSportList",
     "workout_list": "/training/program/query",  # POST — list/fetch workout programs
     "workout_add": "/training/program/add",     # POST — create new structured workout
@@ -467,6 +469,18 @@ SPORT_NAMES: dict[int, str] = {
     900: "Walking", 9807: "Bike Commute",
 }
 
+ACTIVITY_EXPORT_FILE_TYPES: dict[str, int] = {
+    "csv": 0,
+    "gpx": 1,
+    "kml": 2,
+    "tcx": 3,
+    "fit": 4,
+}
+
+ACTIVITY_EXPORT_FILE_TYPE_NAMES = {
+    value: key for key, value in ACTIVITY_EXPORT_FILE_TYPES.items()
+}
+
 
 def _parse_activity(item: dict) -> ActivitySummary:
     sport_type = item.get("sportType")
@@ -551,6 +565,118 @@ async def fetch_activity_detail(auth: StoredAuth, activity_id: str, sport_type: 
     return data
 
 
+def _normalize_activity_export_file_type(file_type: str | int) -> int:
+    """Return the COROS fileType enum for an activity export request."""
+    if isinstance(file_type, int):
+        if file_type not in ACTIVITY_EXPORT_FILE_TYPE_NAMES:
+            raise ValueError(f"Unsupported activity export file type: {file_type}")
+        return file_type
+
+    normalized = str(file_type).strip().lower()
+    if normalized not in ACTIVITY_EXPORT_FILE_TYPES:
+        supported = ", ".join(sorted(ACTIVITY_EXPORT_FILE_TYPES))
+        raise ValueError(
+            f"Unsupported activity export file type '{file_type}'. Supported types: {supported}"
+        )
+    return ACTIVITY_EXPORT_FILE_TYPES[normalized]
+
+
+def _activity_export_extension(file_type: int) -> str:
+    """Return the file extension for a COROS activity export file type."""
+    return ACTIVITY_EXPORT_FILE_TYPE_NAMES[file_type]
+
+
+def _activity_export_output_path(
+    activity_id: str,
+    file_type: int,
+    output_path: str | None = None,
+    file_url: str | None = None,
+) -> Path:
+    """Resolve the local output path for a downloaded activity export."""
+    if output_path:
+        return Path(output_path).expanduser().resolve()
+
+    if file_url:
+        filename = Path(file_url.split("?", 1)[0]).name
+        if filename:
+            return (Path.cwd() / filename).resolve()
+
+    suffix = _activity_export_extension(file_type)
+    return (Path.cwd() / f"coros-activity-{activity_id}.{suffix}").resolve()
+
+
+async def fetch_activity_export_url(
+    auth: StoredAuth,
+    activity_id: str,
+    sport_type: int,
+    file_type: str | int = "gpx",
+) -> dict:
+    """
+    Request an export URL for a completed activity file.
+
+    The Training Hub web app uses POST /activity/detail/download with
+    query params labelId, sportType, and fileType.
+    """
+    file_type_enum = _normalize_activity_export_file_type(file_type)
+    params = {
+        "labelId": activity_id,
+        "sportType": int(sport_type),
+        "fileType": file_type_enum,
+    }
+
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            _base_url(auth.region) + ENDPOINTS["activity_download"],
+            params=params,
+            headers=_auth_headers(auth),
+        )
+        resp.raise_for_status()
+        body = resp.json()
+
+    _check_response(body, "activity export")
+
+    data = body.get("data", {})
+    file_url = data.get("fileUrl")
+    if not file_url:
+        raise ValueError("Coros activity export did not return a file URL.")
+
+    return {
+        "activity_id": activity_id,
+        "sport_type": int(sport_type),
+        "file_type": _activity_export_extension(file_type_enum),
+        "file_type_enum": file_type_enum,
+        "file_url": file_url,
+    }
+
+
+async def export_activity_file(
+    auth: StoredAuth,
+    activity_id: str,
+    sport_type: int,
+    file_type: str | int = "gpx",
+    output_path: str | None = None,
+) -> dict:
+    """Export a completed activity file and save it locally."""
+    export_info = await fetch_activity_export_url(auth, activity_id, sport_type, file_type)
+    destination = _activity_export_output_path(
+        activity_id,
+        export_info["file_type_enum"],
+        output_path=output_path,
+        file_url=export_info["file_url"],
+    )
+    destination.parent.mkdir(parents=True, exist_ok=True)
+
+    async with httpx.AsyncClient(timeout=60) as client:
+        resp = await client.get(export_info["file_url"])
+        resp.raise_for_status()
+        destination.write_bytes(resp.content)
+
+    export_info["output_path"] = str(destination)
+    export_info["downloaded"] = True
+    export_info.pop("file_type_enum", None)
+    return export_info
+
+
 # ---------------------------------------------------------------------------
 # Workout programs  (/training/program/query + /training/program/add)
 # ---------------------------------------------------------------------------
@@ -559,6 +685,7 @@ async def fetch_activity_detail(auth: StoredAuth, activity_id: str, sport_type: 
 # targetType=2 = time-based (seconds); exerciseType=2 = cycling block
 
 WORKOUT_SPORT_NAMES: dict[int, str] = {
+    1: "Running",
     2: "Indoor Cycling",
     4: "Strength",
     100: "Running",
@@ -566,24 +693,65 @@ WORKOUT_SPORT_NAMES: dict[int, str] = {
     201: "Indoor Cycling (alt)",
 }
 
+DISTANCE_TARGET_TYPES = {5}
+TIME_TARGET_TYPES = {2}
+RUN_STEP_KIND_TO_EXERCISE_TYPE = {
+    "warmup": 1,
+    "training": 2,
+    "interval": 2,
+    "cooldown": 3,
+    "rest": 4,
+}
+RUN_TARGET_TYPE_ALIASES = {
+    "time": 2,
+    "distance": 5,
+}
+
 
 def _parse_workout(item: dict) -> dict:
     exercises = []
     for ex in item.get("exercises", []):
+        overview = ex.get("overview")
         exercises.append({
+            "id": str(ex.get("id", "")),
             "name": ex.get("name"),
+            "overview": _readable_overview(overview) if overview else None,
+            "raw_overview": overview,
+            "exercise_type": ex.get("exerciseType"),
+            "sport_type": ex.get("sportType"),
+            "target_type": ex.get("targetType"),
+            "target_value": ex.get("targetValue"),
+            "target_display_unit": ex.get("targetDisplayUnit"),
             "duration_seconds": ex.get("targetValue"),
+            "intensity_type": ex.get("intensityType"),
+            "intensity_value": ex.get("intensityValue"),
+            "intensity_value_extend": ex.get("intensityValueExtend"),
+            "intensity_display_unit": ex.get("intensityDisplayUnit"),
             "power_low_w": ex.get("intensityValue"),
             "power_high_w": ex.get("intensityValueExtend"),
+            "rest_type": ex.get("restType"),
+            "rest_value": ex.get("restValue"),
             "sets": ex.get("sets", 1),
+            "group_id": str(ex.get("groupId", "")),
+            "is_group": bool(ex.get("isGroup")),
+            "origin_id": str(ex.get("originId", "")),
+            "sort_no": ex.get("sortNo"),
         })
     sport = item.get("sportType")
     return {
         "id": str(item.get("id", "")),
+        "id_in_plan": str(item.get("idInPlan", "")),
         "name": item.get("name"),
         "sport_type": sport,
         "sport_name": WORKOUT_SPORT_NAMES.get(sport, f"Sport {sport}"),
         "estimated_time_seconds": item.get("estimatedTime"),
+        "estimated_distance": item.get("estimatedDistance"),
+        "estimated_type": item.get("estimatedType"),
+        "distance_display_unit": item.get("distanceDisplayUnit"),
+        "target_type": item.get("targetType"),
+        "target_value": item.get("targetValue"),
+        "strength_type": item.get("strengthType"),
+        "simple": item.get("simple"),
         "exercise_count": item.get("exerciseNum", len(exercises)),
         "exercises": exercises,
     }
@@ -603,6 +771,411 @@ async def fetch_workouts(auth: StoredAuth) -> list[dict]:
     _check_response(body, "workout list")
 
     return [_parse_workout(w) for w in body.get("data", [])]
+
+
+async def fetch_workout(auth: StoredAuth, workout_id: str) -> dict:
+    """Fetch a single workout program by ID."""
+    workout = await _fetch_raw_workout(auth, workout_id)
+    if workout is None:
+        raise ValueError(f"Workout {workout_id} not found.")
+    return _parse_workout(workout)
+
+
+def _meters_to_coros_distance_value(meters: float) -> int:
+    """Convert meters to the distance unit used in running workout payloads."""
+    return int(round(meters * 100))
+
+
+def _coros_distance_value_to_meters(value: int | float) -> float:
+    """Convert the running distance unit back to meters."""
+    return float(value) / 100.0
+
+
+def _reset_program_for_create(workout: dict) -> dict:
+    """Prepare a raw workout payload for program/add by clearing identity fields."""
+    payload = copy.deepcopy(workout)
+    payload.pop("exerciseBarChart", None)
+    payload.pop("officalConfig", None)
+    payload["id"] = "0"
+    payload["idInPlan"] = "0"
+    payload["authorId"] = "0"
+    payload["userId"] = "0"
+    payload["createTimestamp"] = 0
+    payload["deleted"] = 0
+    payload["status"] = 1
+    payload["version"] = 0
+    payload["star"] = 0
+    payload["nickname"] = ""
+
+    id_map: dict[str, str] = {}
+    for index, ex in enumerate(payload.get("exercises", []), start=1):
+        old_id = str(ex.get("id", index))
+        new_id = str(index)
+        id_map[old_id] = new_id
+        ex["id"] = new_id
+        ex["programId"] = "0"
+        ex["userId"] = 0
+        ex["createTimestamp"] = 0
+        ex["deleted"] = 0
+        ex["status"] = 1
+        ex["defaultOrder"] = index - 1
+    for ex in payload.get("exercises", []):
+        group_id = str(ex.get("groupId", "0"))
+        ex["groupId"] = id_map.get(group_id, group_id)
+    return payload
+
+
+def _recalculate_workout_summary(workout: dict) -> None:
+    """Best-effort refresh of summary fields after exercise edits."""
+    exercises = workout.get("exercises", [])
+    workout["exerciseNum"] = len(exercises)
+    workout["totalSets"] = len(exercises)
+
+    estimated_distance = sum(
+        int(ex.get("targetValue") or 0)
+        for ex in exercises
+        if ex.get("targetType") in DISTANCE_TARGET_TYPES and not ex.get("isGroup")
+    )
+    estimated_time = sum(
+        int(ex.get("targetValue") or 0)
+        for ex in exercises
+        if ex.get("targetType") in TIME_TARGET_TYPES and not ex.get("isGroup")
+    )
+
+    if estimated_distance:
+        workout["estimatedDistance"] = estimated_distance
+        if workout.get("targetType") in DISTANCE_TARGET_TYPES:
+            workout["targetValue"] = estimated_distance
+    if estimated_time:
+        workout["estimatedTime"] = estimated_time
+        if workout.get("targetType") in TIME_TARGET_TYPES:
+            workout["targetValue"] = estimated_time
+
+
+def _apply_top_level_workout_patch(
+    workout: dict,
+    *,
+    name: Optional[str] = None,
+    estimated_distance_meters: Optional[float] = None,
+    estimated_time_seconds: Optional[int] = None,
+) -> None:
+    if name:
+        workout["name"] = name
+    if estimated_distance_meters is not None:
+        value = _meters_to_coros_distance_value(estimated_distance_meters)
+        workout["estimatedDistance"] = value
+        if workout.get("targetType") in DISTANCE_TARGET_TYPES:
+            workout["targetValue"] = value
+    if estimated_time_seconds is not None:
+        workout["estimatedTime"] = int(estimated_time_seconds)
+        if workout.get("targetType") in TIME_TARGET_TYPES:
+            workout["targetValue"] = int(estimated_time_seconds)
+
+
+def _find_exercise_for_patch(exercises: list[dict], patch: dict) -> tuple[int, dict]:
+    if "step_index" in patch:
+        index = int(patch["step_index"])
+        if index < 0 or index >= len(exercises):
+            raise ValueError(f"step_index {index} is out of range.")
+        return index, exercises[index]
+
+    step_id = patch.get("step_id")
+    if step_id is not None:
+        for index, ex in enumerate(exercises):
+            if str(ex.get("id", "")) == str(step_id):
+                return index, ex
+        raise ValueError(f"step_id {step_id} not found.")
+
+    step_name = patch.get("step_name")
+    if step_name is not None:
+        for index, ex in enumerate(exercises):
+            if ex.get("name") == step_name:
+                return index, ex
+        raise ValueError(f"step_name {step_name!r} not found.")
+
+    raise ValueError("Each step update must include one of: step_index, step_id, step_name.")
+
+
+def _apply_step_updates(workout: dict, step_updates: list[dict]) -> None:
+    exercises = workout.get("exercises", [])
+    for patch in step_updates:
+        _, ex = _find_exercise_for_patch(exercises, patch)
+
+        if "kind" in patch:
+            kind = str(patch["kind"]).strip().lower()
+            if kind not in RUN_STEP_KIND_TO_EXERCISE_TYPE:
+                raise ValueError(f"Unsupported run step kind: {patch['kind']!r}")
+            ex["exerciseType"] = RUN_STEP_KIND_TO_EXERCISE_TYPE[kind]
+        if "name" in patch:
+            ex["name"] = patch["name"]
+        if "overview" in patch:
+            ex["overview"] = patch["overview"]
+        if "target_type" in patch:
+            target_type = patch["target_type"]
+            if isinstance(target_type, str):
+                normalized_target = target_type.strip().lower()
+                if normalized_target not in RUN_TARGET_TYPE_ALIASES:
+                    raise ValueError(f"Unsupported run target_type: {target_type!r}")
+                ex["targetType"] = RUN_TARGET_TYPE_ALIASES[normalized_target]
+            else:
+                ex["targetType"] = target_type
+        if "target_value" in patch:
+            ex["targetValue"] = int(patch["target_value"])
+        if "target_distance_meters" in patch:
+            ex["targetType"] = 5
+            ex["targetValue"] = _meters_to_coros_distance_value(float(patch["target_distance_meters"]))
+        if "target_duration_seconds" in patch:
+            ex["targetType"] = 2
+            ex["targetValue"] = int(patch["target_duration_seconds"])
+        if "target_display_unit" in patch:
+            ex["targetDisplayUnit"] = patch["target_display_unit"]
+        if "intensity_type" in patch:
+            ex["intensityType"] = patch["intensity_type"]
+        if "hr_type" in patch:
+            ex["hrType"] = int(patch["hr_type"])
+        if "is_intensity_percent" in patch:
+            ex["isIntensityPercent"] = bool(patch["is_intensity_percent"])
+        if "intensity_percent" in patch:
+            ex["intensityPercent"] = patch["intensity_percent"]
+        if "intensity_percent_extend" in patch:
+            ex["intensityPercentExtend"] = patch["intensity_percent_extend"]
+        if "intensity_value" in patch:
+            ex["intensityValue"] = int(patch["intensity_value"])
+        if "intensity_value_extend" in patch:
+            ex["intensityValueExtend"] = int(patch["intensity_value_extend"])
+        if "intensity_display_unit" in patch:
+            ex["intensityDisplayUnit"] = patch["intensity_display_unit"]
+        if "rest_type" in patch:
+            ex["restType"] = patch["rest_type"]
+        if "rest_value" in patch:
+            ex["restValue"] = int(patch["rest_value"])
+        if "sets" in patch:
+            ex["sets"] = int(patch["sets"])
+
+    _recalculate_workout_summary(workout)
+
+
+async def create_workout_from_raw(auth: StoredAuth, workout: dict) -> str:
+    """Create a new workout program from a patched raw workout payload."""
+    payload = _reset_program_for_create(workout)
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.post(
+            _base_url(auth.region) + ENDPOINTS["workout_add"],
+            json=payload,
+            headers=_auth_headers(auth),
+        )
+        resp.raise_for_status()
+        body = resp.json()
+    _check_response(body, "workout create from raw")
+    return str(body.get("data", ""))
+
+
+def _resolve_run_target(step: dict) -> tuple[int, int, int]:
+    """Return (target_type, target_value, target_display_unit) for a run step."""
+    raw_target_type = step.get("target_type")
+    if raw_target_type is None:
+        if "target_distance_meters" in step:
+            raw_target_type = "distance"
+        else:
+            raw_target_type = "time"
+
+    if isinstance(raw_target_type, str):
+        normalized = raw_target_type.strip().lower()
+        if normalized not in RUN_TARGET_TYPE_ALIASES:
+            raise ValueError(f"Unsupported run target_type: {raw_target_type!r}")
+        target_type = RUN_TARGET_TYPE_ALIASES[normalized]
+    else:
+        target_type = int(raw_target_type)
+
+    if target_type in DISTANCE_TARGET_TYPES:
+        if "target_distance_meters" in step:
+            target_value = _meters_to_coros_distance_value(float(step["target_distance_meters"]))
+        elif "target_value" in step:
+            target_value = int(step["target_value"])
+        else:
+            raise ValueError("Distance run steps require target_distance_meters or target_value.")
+        target_display_unit = int(step.get("target_display_unit", 3))
+    elif target_type in TIME_TARGET_TYPES:
+        if "target_duration_seconds" in step:
+            target_value = int(step["target_duration_seconds"])
+        elif "target_value" in step:
+            target_value = int(step["target_value"])
+        else:
+            raise ValueError("Time run steps require target_duration_seconds or target_value.")
+        target_display_unit = int(step.get("target_display_unit", 0))
+    else:
+        raise ValueError(f"Unsupported run target_type value: {target_type}")
+
+    return target_type, target_value, target_display_unit
+
+
+def _default_run_overview(kind: str, target_type: int) -> str:
+    kind = kind.lower()
+    if kind == "warmup":
+        return "sid_run_warm_up_dist" if target_type in DISTANCE_TARGET_TYPES else "sid_run_warm_up"
+    if kind == "cooldown":
+        return "sid_run_cool_down_dist" if target_type in DISTANCE_TARGET_TYPES else "sid_run_cool_down"
+    if kind == "rest":
+        return "sid_run_rest_dist" if target_type in DISTANCE_TARGET_TYPES else "sid_run_rest"
+    return "sid_run_training"
+
+
+def _build_run_exercise(step: dict, *, ex_id: int, sort_no: int, group_id: str = "0") -> tuple[dict, int, int]:
+    """Build a single run exercise and return (exercise, distance_sum, time_sum)."""
+    kind = str(step.get("kind", "training")).strip().lower()
+    if kind not in RUN_STEP_KIND_TO_EXERCISE_TYPE:
+        raise ValueError(f"Unsupported run step kind: {kind!r}")
+
+    target_type, target_value, target_display_unit = _resolve_run_target(step)
+    intensity_type = int(step.get("intensity_type", 0))
+    intensity_value = int(step.get("intensity_value", 0))
+    intensity_value_extend = int(step.get("intensity_value_extend", 0))
+    exercise = {
+        "id": ex_id,
+        "name": step.get("name") or kind.replace("warmup", "Warm-up").replace("cooldown", "Cool-down").title(),
+        "exerciseType": RUN_STEP_KIND_TO_EXERCISE_TYPE[kind],
+        "sportType": 1,
+        "intensityType": intensity_type,
+        "intensityValue": intensity_value,
+        "intensityValueExtend": intensity_value_extend,
+        "targetType": target_type,
+        "targetValue": target_value,
+        "targetDisplayUnit": target_display_unit,
+        "intensityDisplayUnit": int(step.get("intensity_display_unit", 0)),
+        "sets": int(step.get("sets", 1)),
+        "sortNo": sort_no,
+        "restType": int(step.get("rest_type", 3)),
+        "restValue": int(step.get("rest_value", 0)),
+        "groupId": group_id,
+        "isGroup": False,
+        "originId": str(step.get("origin_id", "0")),
+        "overview": step.get("overview") or _default_run_overview(kind, target_type),
+        "hrType": int(step.get("hr_type", 3)),
+        "isIntensityPercent": bool(step.get("is_intensity_percent", False)),
+    }
+    distance_sum = target_value if target_type in DISTANCE_TARGET_TYPES else 0
+    time_sum = target_value if target_type in TIME_TARGET_TYPES else 0
+    return exercise, distance_sum, time_sum
+
+
+def build_run_workout_payload(name: str, steps: list[dict]) -> dict:
+    """Build a raw COROS run workout payload from explicit run steps."""
+    exercises = []
+    top_index = 0
+    ex_id = 0
+    total_distance = 0
+    total_time = 0
+
+    for step in steps:
+        if "repeat" in step:
+            top_index += 1
+            ex_id += 1
+            group_sort = 16777216 * top_index
+            group_id = ex_id
+            repeat_count = int(step["repeat"])
+            sub_steps = step.get("steps") or []
+            group_distance = 0
+            group_time = 0
+            built_sub_steps = []
+            for j, sub in enumerate(sub_steps):
+                ex_id += 1
+                built, sub_distance, sub_time = _build_run_exercise(
+                    sub,
+                    ex_id=ex_id,
+                    sort_no=group_sort + 65536 * (j + 1),
+                    group_id=str(group_id),
+                )
+                built_sub_steps.append(built)
+                group_distance += sub_distance
+                group_time += sub_time
+            group_target_type = 5 if group_distance else 2
+            group_target_value = group_distance if group_distance else group_time
+            exercises.append({
+                "id": group_id,
+                "name": step.get("name", "Interval Group"),
+                "exerciseType": 0,
+                "sportType": 1,
+                "intensityType": 0,
+                "intensityValue": 0,
+                "targetType": group_target_type,
+                "targetValue": group_target_value,
+                "targetDisplayUnit": 3 if group_target_type in DISTANCE_TARGET_TYPES else 0,
+                "sets": repeat_count,
+                "sortNo": group_sort,
+                "restType": int(step.get("rest_type", 3)),
+                "restValue": int(step.get("rest_value", 0)),
+                "groupId": "0",
+                "isGroup": True,
+                "originId": "0",
+                "overview": step.get("overview", "sid_run_training"),
+            })
+            exercises.extend(built_sub_steps)
+            total_distance += group_distance * repeat_count
+            total_time += group_time * repeat_count
+        else:
+            top_index += 1
+            ex_id += 1
+            built, step_distance, step_time = _build_run_exercise(
+                step,
+                ex_id=ex_id,
+                sort_no=16777216 * top_index,
+            )
+            exercises.append(built)
+            total_distance += step_distance
+            total_time += step_time
+
+    payload = {
+        "name": name,
+        "sportType": 1,
+        "estimatedTime": total_time,
+        "estimatedDistance": total_distance,
+        "distanceDisplayUnit": 3,
+        "estimatedType": 6 if total_distance else 0,
+        "targetType": 5 if total_distance else 2,
+        "targetValue": total_distance if total_distance else total_time,
+        "simple": False,
+        "access": 1,
+        "exerciseNum": len(exercises),
+        "totalSets": len(exercises),
+        "exercises": exercises,
+    }
+    return payload
+
+
+async def create_run_workout(auth: StoredAuth, name: str, steps: list[dict]) -> str:
+    """Create a running workout with explicit run-step semantics."""
+    payload = build_run_workout_payload(name, steps)
+    return await create_workout_from_raw(auth, payload)
+
+
+async def clone_and_patch_workout(
+    auth: StoredAuth,
+    workout_id: str,
+    *,
+    name: Optional[str] = None,
+    estimated_distance_meters: Optional[float] = None,
+    estimated_time_seconds: Optional[int] = None,
+    step_updates: Optional[list[dict]] = None,
+) -> dict:
+    """Clone a workout, apply patches, create a replacement, and return both IDs."""
+    raw = await _fetch_raw_workout(auth, workout_id)
+    if raw is None:
+        raise ValueError(f"Workout {workout_id} not found.")
+
+    patched = copy.deepcopy(raw)
+    _apply_top_level_workout_patch(
+        patched,
+        name=name,
+        estimated_distance_meters=estimated_distance_meters,
+        estimated_time_seconds=estimated_time_seconds,
+    )
+    _apply_step_updates(patched, step_updates or [])
+    new_workout_id = await create_workout_from_raw(auth, patched)
+    return {
+        "old_workout_id": str(workout_id),
+        "new_workout_id": new_workout_id,
+        "workout": _parse_workout(patched),
+    }
 
 
 async def create_workout(
@@ -782,29 +1355,48 @@ async def fetch_schedule(
     return _strip_schedule(body.get("data") or {})
 
 
+async def fetch_schedule_raw(auth: StoredAuth, start_day: str, end_day: str) -> dict:
+    """Fetch the raw schedule payload for a date range."""
+    params = {
+        "startDate": start_day,
+        "endDate": end_day,
+        "supportRestExercise": 1,
+    }
+    async with httpx.AsyncClient(timeout=30) as client:
+        resp = await client.get(
+            _base_url(auth.region) + ENDPOINTS["schedule"],
+            params=params,
+            headers=_auth_headers(auth),
+        )
+        resp.raise_for_status()
+        body = resp.json()
+
+    _check_response(body, "schedule")
+
+    return body.get("data") or {}
+
+
 _EXERCISE_DROP = frozenset({
     "videoInfos", "videoUrl", "videoUrlArrStr", "coverUrlArrStr",
     "thumbnailUrl", "sourceUrl", "animationId",
     "access", "deleted", "defaultOrder", "status", "createTimestamp",
     "userId", "muscle", "muscleRelevance", "part", "equipment",
-    "sortNo", "originId", "isDefaultAdd", "intensityCustom",
-    "intensityDisplayUnit", "isIntensityPercent",
+    "isDefaultAdd", "intensityCustom",
 })
 
 _PROGRAM_DROP = frozenset({
     "exerciseBarChart", "headPic", "profile", "sex", "star", "nickname",
     "essence", "originEssence", "access", "authorId", "deleted", "pbVersion",
     "version", "status", "createTimestamp", "thirdPartyId",
-    "isTargetTypeConsistent", "pitch", "simple", "unit",
-    "distanceDisplayUnit", "elevGain", "estimatedDistance", "estimatedTime",
-    "estimatedType", "strengthType", "targetType", "targetValue",
+    "isTargetTypeConsistent", "pitch", "unit",
+    "elevGain",
     "planId", "planIdIndex", "userId",
 })
 
 _ENTITY_DROP = frozenset({
     "exerciseBarChart", "completeRate", "score", "standardRate",
     "dayNo", "operateUserId", "thirdParty", "thirdPartyId",
-    "sortNo", "sortNoInSchedule", "userId", "planId", "planIdIndex",
+    "sortNo", "userId", "planIdIndex",
 })
 
 _TOP_DROP = frozenset({
@@ -851,6 +1443,57 @@ def _strip_schedule(data: dict) -> dict:
     if "programs" in out:
         out["programs"] = [_strip_program(p) for p in out["programs"]]
     return out
+
+
+def _normalize_scheduled_workouts(data: dict) -> list[dict]:
+    """Flatten the schedule payload into one entry per scheduled workout."""
+    entities = data.get("entities") or []
+    programs = data.get("programs") or []
+
+    programs_by_id_in_plan = {}
+    programs_by_id = {}
+    for program in programs:
+        if program.get("idInPlan") is not None:
+            programs_by_id_in_plan[str(program.get("idInPlan"))] = program
+        if program.get("id") is not None:
+            programs_by_id[str(program.get("id"))] = program
+
+    normalized = []
+    for idx, entity in enumerate(entities):
+        id_in_plan = str(entity.get("idInPlan", ""))
+        plan_program_id = str(entity.get("planProgramId", "") or "")
+
+        program = None
+        if id_in_plan and id_in_plan in programs_by_id_in_plan:
+            program = programs_by_id_in_plan[id_in_plan]
+        elif plan_program_id and plan_program_id in programs_by_id:
+            program = programs_by_id[plan_program_id]
+        elif idx < len(programs):
+            program = programs[idx]
+
+        parsed_program = _parse_workout(program) if program else None
+        normalized.append({
+            "plan_id": str(entity.get("planId", "")),
+            "id_in_plan": id_in_plan,
+            "plan_program_id": plan_program_id,
+            "happen_day": str(entity.get("happenDay", "")),
+            "sort_no": entity.get("sortNoInSchedule"),
+            "workout_id": parsed_program["id"] if parsed_program else plan_program_id,
+            "workout_name": parsed_program["name"] if parsed_program else None,
+            "sport_type": parsed_program["sport_type"] if parsed_program else None,
+            "sport_name": parsed_program["sport_name"] if parsed_program else None,
+            "entity": _drop_keys(entity, frozenset({"userId", "planIdIndex"})),
+            "workout": parsed_program,
+        })
+    return normalized
+
+
+async def fetch_scheduled_workouts(
+    auth: StoredAuth, start_day: str, end_day: str
+) -> list[dict]:
+    """Return a flattened calendar-friendly view of scheduled workouts."""
+    data = await fetch_schedule_raw(auth, start_day, end_day)
+    return _normalize_scheduled_workouts(data)
 
 
 async def create_strength_workout(

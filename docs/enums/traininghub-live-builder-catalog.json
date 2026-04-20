@@ -1,0 +1,686 @@
+{
+  "available_sports": [
+    "Run",
+    "Trail Run",
+    "Bike",
+    "Swim",
+    "Strength",
+    "Indoor Climb",
+    "Bouldering"
+  ],
+  "correlations": {
+    "run": {
+      "baseline_first_exercise": {
+        "exerciseType": 1,
+        "hrType": 3,
+        "intensityDisplayUnit": 0,
+        "intensityPercent": 91000,
+        "intensityPercentExtend": 95000,
+        "intensityType": 2,
+        "intensityValue": 149,
+        "intensityValueExtend": 156,
+        "isIntensityPercent": true,
+        "overview": "sid_run_warm_up_dist",
+        "targetType": 2,
+        "targetValue": 300
+      },
+      "exercise_type_details": [
+        {
+          "label": "Warm Up",
+          "payload": {
+            "exerciseType": 1,
+            "overview": "sid_run_warm_up_dist",
+            "targetType": 2,
+            "targetValue": 300
+          },
+          "selected_label": "Warm Up"
+        },
+        {
+          "label": "Training",
+          "payload": {
+            "exerciseType": 2,
+            "overview": "sid_run_training",
+            "targetType": 2,
+            "targetValue": 300
+          },
+          "selected_label": "Training"
+        },
+        {
+          "label": "Rest",
+          "payload": {
+            "exerciseType": 4,
+            "overview": "sid_run_cool_down_dist",
+            "targetType": 2,
+            "targetValue": 300
+          },
+          "selected_label": "Rest"
+        },
+        {
+          "label": "Cool Down",
+          "payload": {
+            "exerciseType": 3,
+            "overview": "sid_run_cool_down_dist",
+            "targetType": 2,
+            "targetValue": 300
+          },
+          "selected_label": "Cool Down"
+        }
+      ],
+      "intensity_type_details": [
+        {
+          "label": "% Max Heart Rate",
+          "payload": {
+            "hrType": 1,
+            "intensityDisplayUnit": 0,
+            "intensityPercent": 61000,
+            "intensityPercentExtend": 70000,
+            "intensityType": 2,
+            "intensityValue": 116,
+            "intensityValueExtend": 134,
+            "isIntensityPercent": true
+          },
+          "selected_label": "% Max Heart Rate",
+          "zone_options": [
+            "Recovery",
+            "Warm Up",
+            "Fat Burn",
+            "Aerobic Endurance",
+            "Threshold",
+            "Anaerobic",
+            "Custom"
+          ]
+        },
+        {
+          "label": "% Heart Rate Reserve",
+          "payload": {
+            "hrType": 2,
+            "intensityDisplayUnit": 0,
+            "intensityPercent": 75000,
+            "intensityPercentExtend": 84000,
+            "intensityType": 2,
+            "intensityValue": 154,
+            "intensityValueExtend": 168,
+            "isIntensityPercent": true
+          },
+          "selected_label": "% Heart Rate Reserve",
+          "zone_options": [
+            "Recovery",
+            "Aerobic Endurance",
+            "Aerobic Power",
+            "Threshold",
+            "Anaerobic Endurance",
+            "Anaerobic Power",
+            "Custom"
+          ]
+        },
+        {
+          "label": "% Lactate Threshold HR",
+          "payload": {
+            "hrType": 3,
+            "intensityDisplayUnit": 0,
+            "intensityPercent": 91000,
+            "intensityPercentExtend": 95000,
+            "intensityType": 2,
+            "intensityValue": 149,
+            "intensityValueExtend": 156,
+            "isIntensityPercent": true
+          },
+          "selected_label": "% Lactate Threshold HR",
+          "zone_options": [
+            "Recovery",
+            "Aerobic Endurance",
+            "Aerobic Power",
+            "Threshold",
+            "Anaerobic Endurance",
+            "Anaerobic Power",
+            "Custom"
+          ]
+        },
+        {
+          "label": "Heart Rate",
+          "payload": {
+            "hrType": 2,
+            "intensityDisplayUnit": 0,
+            "intensityPercent": 37671.23287671233,
+            "intensityPercentExtend": 51369.86301369863,
+            "intensityType": 2,
+            "intensityValue": 100,
+            "intensityValueExtend": 120,
+            "isIntensityPercent": false
+          },
+          "selected_label": "Heart Rate",
+          "zone_options": [
+            "Recovery",
+            "Aerobic Endurance",
+            "Aerobic Power",
+            "Threshold",
+            "Anaerobic Endurance",
+            "Anaerobic Power",
+            "Custom"
+          ]
+        },
+        {
+          "label": "% Threshold Pace",
+          "payload": {
+            "hrType": 0,
+            "intensityDisplayUnit": "2",
+            "intensityPercent": 86700,
+            "intensityPercentExtend": 93000,
+            "intensityType": 3,
+            "intensityValue": 417000,
+            "intensityValueExtend": 452000,
+            "isIntensityPercent": true
+          },
+          "selected_label": "% Threshold Pace",
+          "zone_options": [
+            "Recovery",
+            "Aerobic Endurance",
+            "Aerobic Power",
+            "Threshold",
+            "Anaerobic Endurance",
+            "Anaerobic Power",
+            "Custom"
+          ]
+        },
+        {
+          "label": "Pace",
+          "payload": {
+            "hrType": 0,
+            "intensityDisplayUnit": "2",
+            "intensityPercent": 108000,
+            "intensityPercentExtend": 129000,
+            "intensityType": 3,
+            "intensityValue": 186411,
+            "intensityValueExtend": 223694,
+            "isIntensityPercent": false
+          },
+          "selected_label": "Pace",
+          "zone_options": [
+            "Recovery",
+            "Aerobic Endurance",
+            "Aerobic Power",
+            "Threshold",
+            "Anaerobic Endurance",
+            "Anaerobic Power",
+            "Custom"
+          ]
+        },
+        {
+          "label": "% Effort Pace",
+          "payload": {
+            "hrType": 0,
+            "intensityDisplayUnit": "2",
+            "intensityPercent": 86700,
+            "intensityPercentExtend": 93000,
+            "intensityType": 8,
+            "intensityValue": 417000,
+            "intensityValueExtend": 452000,
+            "isIntensityPercent": true
+          },
+          "selected_label": "% Effort Pace",
+          "zone_options": [
+            "Recovery",
+            "Aerobic Endurance",
+            "Aerobic Power",
+            "Threshold",
+            "Anaerobic Endurance",
+            "Anaerobic Power",
+            "Custom"
+          ]
+        },
+        {
+          "label": "Effort Pace",
+          "payload": {
+            "hrType": 0,
+            "intensityDisplayUnit": "2",
+            "intensityPercent": 108000,
+            "intensityPercentExtend": 129000,
+            "intensityType": 8,
+            "intensityValue": 186411,
+            "intensityValueExtend": 223694,
+            "isIntensityPercent": false
+          },
+          "selected_label": "Effort Pace",
+          "zone_options": [
+            "Recovery",
+            "Aerobic Endurance",
+            "Aerobic Power",
+            "Threshold",
+            "Anaerobic Endurance",
+            "Anaerobic Power",
+            "Custom"
+          ]
+        },
+        {
+          "label": "Power",
+          "payload": {
+            "hrType": 0,
+            "intensityDisplayUnit": 0,
+            "intensityPercent": 0,
+            "intensityPercentExtend": 0,
+            "intensityType": 6,
+            "intensityValue": 200,
+            "intensityValueExtend": 320,
+            "isIntensityPercent": false
+          },
+          "selected_label": "Power",
+          "zone_options": [
+            "Recovery",
+            "Aerobic Endurance",
+            "Aerobic Power",
+            "Threshold",
+            "Anaerobic Endurance",
+            "Anaerobic Power",
+            "Custom"
+          ]
+        },
+        {
+          "label": "Cadence",
+          "payload": {
+            "hrType": 0,
+            "intensityDisplayUnit": 0,
+            "intensityPercent": 0,
+            "intensityPercentExtend": 0,
+            "intensityType": 7,
+            "intensityValue": 170,
+            "intensityValueExtend": 180,
+            "isIntensityPercent": false
+          },
+          "selected_label": "Cadence",
+          "zone_options": [
+            "Recovery",
+            "Aerobic Endurance",
+            "Aerobic Power",
+            "Threshold",
+            "Anaerobic Endurance",
+            "Anaerobic Power",
+            "Custom"
+          ]
+        },
+        {
+          "label": "Not set",
+          "payload": {
+            "hrType": 0,
+            "intensityDisplayUnit": 0,
+            "intensityPercent": 0,
+            "intensityPercentExtend": 0,
+            "intensityType": 0,
+            "intensityValue": 0,
+            "intensityValueExtend": 0,
+            "isIntensityPercent": false
+          },
+          "selected_label": "Not set",
+          "zone_options": [
+            "Recovery",
+            "Aerobic Endurance",
+            "Aerobic Power",
+            "Threshold",
+            "Anaerobic Endurance",
+            "Anaerobic Power",
+            "Custom"
+          ]
+        }
+      ],
+      "target_type_details": [
+        {
+          "label": "Time",
+          "payload": {
+            "overview": "sid_run_warm_up_dist",
+            "targetDisplayUnit": 0,
+            "targetType": 2,
+            "targetValue": 300
+          },
+          "selected_label": "Time"
+        },
+        {
+          "label": "Distance",
+          "payload": {
+            "overview": "sid_run_warm_up_dist",
+            "targetDisplayUnit": 3,
+            "targetType": 5,
+            "targetValue": 160934
+          },
+          "selected_label": "Distance"
+        },
+        {
+          "label": "Training Load",
+          "payload": {
+            "overview": "sid_run_warm_up_dist",
+            "targetDisplayUnit": 0,
+            "targetType": 6,
+            "targetValue": 100
+          },
+          "selected_label": "Training Load"
+        },
+        {
+          "label": "Open",
+          "payload": {
+            "overview": "sid_run_warm_up_dist",
+            "targetDisplayUnit": 0,
+            "targetType": 1,
+            "targetValue": 0
+          },
+          "selected_label": "Open"
+        }
+      ]
+    }
+  },
+  "generated_at": "2026-04-20T12:20:45.749028+00:00",
+  "notes": [
+    "This catalog is generated by automating the live Training Hub builder and intercepting draft calculate requests.",
+    "The checked-in JSON is intended to keep builder labels and raw payload fragments statically available to agents.",
+    "Run intensity labels are composite in COROS, so the captured payload includes supporting fields like hrType and percent flags.",
+    "Builder option lists are captured for every available sport; deeper composite correlation is currently run-specific."
+  ],
+  "source": {
+    "auth": "Training Hub login via COROS credentials from env or macOS Keychain",
+    "derived_from": "Training Hub builder UI plus training/program/calculate draft payloads",
+    "schedule_url": "https://training.coros.com/admin/views/schedule"
+  },
+  "sports": {
+    "bike": {
+      "baseline_first_exercise": {
+        "exerciseType": 1,
+        "hrType": 3,
+        "intensityDisplayUnit": 0,
+        "intensityPercent": 91000,
+        "intensityPercentExtend": 95000,
+        "intensityType": 2,
+        "intensityValue": 149,
+        "intensityValueExtend": 156,
+        "isIntensityPercent": true,
+        "overview": "sid_bike_warm_up_dist",
+        "targetType": 2,
+        "targetValue": 300
+      },
+      "exercise_options": [
+        "Warm Up",
+        "Training",
+        "Rest",
+        "Cool Down"
+      ],
+      "intensity_options": [
+        "% Max Heart Rate",
+        "% Heart Rate Reserve",
+        "% Lactate Threshold HR",
+        "Heart Rate",
+        "%FTP",
+        "Speed",
+        "Power",
+        "Cadence",
+        "Not set"
+      ],
+      "intensity_zone_options": [
+        "Recovery",
+        "Aerobic Endurance",
+        "Aerobic Power",
+        "Threshold",
+        "Anaerobic Endurance",
+        "Anaerobic Power",
+        "Custom"
+      ],
+      "label": "Bike",
+      "selected_exercise": "Warm Up",
+      "selected_intensity": "% Lactate Threshold HR",
+      "selected_intensity_zone": "Aerobic Power",
+      "selected_sport_label": "Bike",
+      "selected_target": "Time",
+      "target_options": [
+        "Time",
+        "Distance",
+        "Training Load",
+        "Open"
+      ]
+    },
+    "bouldering": {
+      "baseline_first_exercise": {
+        "exerciseType": 1,
+        "hrType": 0,
+        "intensityDisplayUnit": 0,
+        "intensityPercent": 0,
+        "intensityPercentExtend": 0,
+        "intensityType": 10,
+        "intensityValue": 0,
+        "intensityValueExtend": 0,
+        "isIntensityPercent": false,
+        "overview": "sid_poolswim_warm_up_dist",
+        "targetType": 9,
+        "targetValue": 2
+      },
+      "exercise_options": [
+        "Warm Up",
+        "Training",
+        "Rest",
+        "Cool Down"
+      ],
+      "intensity_options": [],
+      "intensity_zone_options": [],
+      "label": "Bouldering",
+      "selected_exercise": "Warm Up",
+      "selected_sport_label": "Bouldering",
+      "selected_target": "Routes",
+      "target_options": [
+        "Routes",
+        "Time",
+        "Open"
+      ]
+    },
+    "indoor_climb": {
+      "baseline_first_exercise": {
+        "exerciseType": 1,
+        "hrType": 0,
+        "intensityDisplayUnit": 0,
+        "intensityPercent": 0,
+        "intensityPercentExtend": 0,
+        "intensityType": 10,
+        "intensityValue": 0,
+        "intensityValueExtend": 0,
+        "isIntensityPercent": false,
+        "overview": "sid_poolswim_warm_up_dist",
+        "targetType": 9,
+        "targetValue": 2
+      },
+      "exercise_options": [
+        "Warm Up",
+        "Training",
+        "Rest",
+        "Cool Down"
+      ],
+      "intensity_options": [],
+      "intensity_zone_options": [],
+      "label": "Indoor Climb",
+      "selected_exercise": "Warm Up",
+      "selected_sport_label": "Indoor Climb",
+      "selected_target": "Routes",
+      "target_options": [
+        "Routes",
+        "Time",
+        "Open"
+      ]
+    },
+    "run": {
+      "baseline_first_exercise": {
+        "exerciseType": 1,
+        "hrType": 3,
+        "intensityDisplayUnit": 0,
+        "intensityPercent": 91000,
+        "intensityPercentExtend": 95000,
+        "intensityType": 2,
+        "intensityValue": 149,
+        "intensityValueExtend": 156,
+        "isIntensityPercent": true,
+        "overview": "sid_run_warm_up_dist",
+        "targetType": 2,
+        "targetValue": 300
+      },
+      "exercise_options": [
+        "Warm Up",
+        "Training",
+        "Rest",
+        "Cool Down"
+      ],
+      "intensity_options": [
+        "% Max Heart Rate",
+        "% Heart Rate Reserve",
+        "% Lactate Threshold HR",
+        "Heart Rate",
+        "% Threshold Pace",
+        "Pace",
+        "% Effort Pace",
+        "Effort Pace",
+        "Power",
+        "Cadence",
+        "Not set"
+      ],
+      "intensity_zone_options": [
+        "Recovery",
+        "Aerobic Endurance",
+        "Aerobic Power",
+        "Threshold",
+        "Anaerobic Endurance",
+        "Anaerobic Power",
+        "Custom"
+      ],
+      "label": "Run",
+      "selected_exercise": "Warm Up",
+      "selected_intensity": "% Lactate Threshold HR",
+      "selected_intensity_zone": "Aerobic Power",
+      "selected_sport_label": "Run",
+      "selected_target": "Time",
+      "target_options": [
+        "Time",
+        "Distance",
+        "Training Load",
+        "Open"
+      ]
+    },
+    "strength": {
+      "baseline_first_exercise": {
+        "exerciseType": 2,
+        "hrType": 0,
+        "intensityDisplayUnit": "7",
+        "intensityPercent": 0,
+        "intensityPercentExtend": 0,
+        "intensityType": 1,
+        "intensityValue": 0,
+        "intensityValueExtend": 0,
+        "isIntensityPercent": false,
+        "overview": "sid_strength_training",
+        "targetType": 3,
+        "targetValue": 15
+      },
+      "exercise_options": [],
+      "intensity_options": [],
+      "intensity_zone_options": [],
+      "label": "Strength",
+      "selected_sport_label": "Strength",
+      "selected_target": "Reps",
+      "target_options": [
+        "Reps",
+        "Time",
+        "Open"
+      ]
+    },
+    "swim": {
+      "baseline_first_exercise": {
+        "exerciseType": 1,
+        "hrType": 0,
+        "intensityDisplayUnit": 0,
+        "intensityPercent": 0,
+        "intensityPercentExtend": 0,
+        "intensityType": 5,
+        "intensityValue": 1,
+        "intensityValueExtend": 0,
+        "isIntensityPercent": false,
+        "overview": "sid_poolswim_warm_up_dist",
+        "targetType": 5,
+        "targetValue": 10000
+      },
+      "exercise_options": [
+        "Warm Up",
+        "Send-Off Time Int.",
+        "Training",
+        "Rest",
+        "Cool Down"
+      ],
+      "intensity_options": [],
+      "intensity_zone_options": [
+        "Freestyle",
+        "Breaststroke",
+        "Backstroke",
+        "Butterfly",
+        "Mix (mixing 2 or more strokes)",
+        "Individual Medley (Butterfly, Backstroke, Breaststroke, Freestyle)",
+        "Drills",
+        "Not set"
+      ],
+      "label": "Swim",
+      "selected_exercise": "Warm Up",
+      "selected_intensity_zone": "Freestyle",
+      "selected_sport_label": "Swim",
+      "selected_target": "Distance",
+      "target_options": [
+        "Distance",
+        "Time",
+        "Open"
+      ]
+    },
+    "trail_run": {
+      "baseline_first_exercise": {
+        "exerciseType": 1,
+        "hrType": 3,
+        "intensityDisplayUnit": 0,
+        "intensityPercent": 91000,
+        "intensityPercentExtend": 95000,
+        "intensityType": 2,
+        "intensityValue": 149,
+        "intensityValueExtend": 156,
+        "isIntensityPercent": true,
+        "overview": "sid_run_warm_up_dist",
+        "targetType": 2,
+        "targetValue": 300
+      },
+      "exercise_options": [
+        "Warm Up",
+        "Training",
+        "Rest",
+        "Cool Down"
+      ],
+      "intensity_options": [
+        "% Max Heart Rate",
+        "% Heart Rate Reserve",
+        "% Lactate Threshold HR",
+        "Heart Rate",
+        "% Threshold Pace",
+        "Pace",
+        "% Effort Pace",
+        "Effort Pace",
+        "Power",
+        "Cadence",
+        "Not set"
+      ],
+      "intensity_zone_options": [
+        "Recovery",
+        "Aerobic Endurance",
+        "Aerobic Power",
+        "Threshold",
+        "Anaerobic Endurance",
+        "Anaerobic Power",
+        "Custom"
+      ],
+      "label": "Trail Run",
+      "selected_exercise": "Warm Up",
+      "selected_intensity": "% Lactate Threshold HR",
+      "selected_intensity_zone": "Aerobic Power",
+      "selected_sport_label": "Trail Run",
+      "selected_target": "Time",
+      "target_options": [
+        "Time",
+        "Distance",
+        "Training Load",
+        "Elev. Gain",
+        "Open"
+      ]
+    }
+  }
+}

@@ -4,6 +4,8 @@ A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server that f
 
 **No API key required.** This server authenticates directly with your Coros Training Hub credentials. Your token is stored securely in your system keyring (or an encrypted local file as fallback), never transmitted anywhere except to Coros.
 
+For the distinction between library workouts, scheduled calendar entries, and plan containers, see [docs/workout-taxonomy.md](./docs/workout-taxonomy.md).
+
 ## What You Can Do
 
 Ask your AI assistant questions like:
@@ -30,7 +32,12 @@ Ask your AI assistant questions like:
 | `get_sleep_data` | Fetch nightly sleep stages (deep, light, REM, awake) and sleep HR for n weeks (default: 4) |
 | `list_activities` | List activities for a date range with summary metrics |
 | `get_activity_detail` | Fetch full detail for a single activity (laps, HR zones, power zones) |
+| `export_activity_file` | Export a completed activity file in GPX, FIT, TCX, KML, or CSV and save it locally |
 | `list_workouts` | List all saved structured workout programs |
+| `get_workout_builder_catalog` | Return the checked-in enum registry and live builder catalog for workout construction |
+| `get_run_workout_schema` | Return the shared run-step schema used by both `create_run_workout` and `update_run_workout` |
+| `create_run_workout` | Create a running workout with explicit run-step kinds and run targets |
+| `update_run_workout` | Clone and edit a running workout using run-specific step updates |
 | `create_workout` | Create a new structured workout with named steps and power targets |
 | `delete_workout` | Delete a workout program from the library |
 | `list_planned_activities` | List planned workouts from the Coros training calendar |
@@ -38,6 +45,29 @@ Ask your AI assistant questions like:
 | `remove_scheduled_workout` | Remove a scheduled workout from the calendar |
 | `create_strength_workout` | Create a structured strength workout with sets, reps, or timed exercises |
 | `list_exercises` | Browse the Coros exercise catalogue, especially for strength workouts |
+
+## Workout Taxonomy
+
+The fork distinguishes between three related objects:
+
+- `library workout`: a reusable workout/program in your account library
+- `scheduled workout entry`: a calendar occurrence on a specific day
+- `plan container`: the higher-level COROS schedule/plan that owns scheduled entries
+
+Important consequences:
+
+- `list_workouts` shows library workouts, not calendar entries
+- `list_scheduled_workouts` shows scheduled entries, not the full library
+- scheduling a workout may create a scheduled copy with different IDs than the original library workout
+- the MCP writes to COROS server state, but device sync is still handled by the COROS app/watch
+- running creation/editing is moving toward sport-specific tools like `create_run_workout` and `update_run_workout`
+- `get_run_workout_schema` exposes the exact shared run-step contract so agents do not need to guess which fields are valid on create vs update
+- the older generic `create_workout` remains available, but it is still shaped around simpler time/power workout construction
+- GPX/FIT/TCX/KML export applies to completed activities, not to structured library workouts; structured workouts use a separate share flow in the app
+
+See [docs/workout-taxonomy.md](./docs/workout-taxonomy.md) for the full explanation.
+
+For automated enum discovery from public Training Hub assets and the live Training Hub builder, see [docs/enum-extraction.md](./docs/enum-extraction.md).
 
 ---
 
@@ -247,6 +277,23 @@ Fetch full detail for a single activity. Requires the `sport_type` from `list_ac
 Returns full activity data including laps, HR zones, power zones, and all sport-specific metrics.
 
 > **Note:** Large time-series arrays (`graphList`, `frequencyList`, `gpsLightDuration`) are stripped from the response to keep it manageable.
+
+### `export_activity_file`
+
+Export a completed activity file and save it locally.
+
+```json
+{
+  "activity_id": "469901014965714948",
+  "sport_type": 100,
+  "file_type": "gpx",
+  "output_path": "/tmp/morning-run.gpx"
+}
+```
+
+`file_type`: `gpx`, `fit`, `tcx`, `kml`, or `csv`
+
+Returns: `activity_id`, `sport_type`, `file_type`, `file_url`, `output_path`, `downloaded`
 
 ### `list_workouts`
 

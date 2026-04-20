@@ -1,0 +1,911 @@
+{
+  "enums": {
+    "exercise_type": [
+      {
+        "color": "#FFA400",
+        "display": "Warm Up",
+        "display_key": "T1120",
+        "id": 1,
+        "name": "warmup"
+      },
+      {
+        "color": "#20CD61",
+        "display": "Training",
+        "display_key": "T1121",
+        "id": 2,
+        "name": "train"
+      },
+      {
+        "color": "#00D5FF",
+        "display": "Cool Down",
+        "display_key": "T1122",
+        "id": 3,
+        "name": "relax"
+      },
+      {
+        "color": "#9A9A9A",
+        "display": "Rest",
+        "display_key": "T1123",
+        "id": 4,
+        "name": "rest"
+      },
+      {
+        "color": "#20CD61",
+        "display": "Interval Training",
+        "display_key": "S4683",
+        "id": 5,
+        "name": "package"
+      }
+    ],
+    "intensity_type": [
+      {
+        "display": "Not Set",
+        "id": 0,
+        "name": "notSet",
+        "source": "traininghub-main-bundle-base-category"
+      },
+      {
+        "display": "Weight",
+        "id": 1,
+        "name": "weight",
+        "source": "traininghub-main-bundle-base-category"
+      },
+      {
+        "display": "Heart Rate",
+        "id": 2,
+        "name": "heart",
+        "source": "traininghub-main-bundle-base-category"
+      },
+      {
+        "display": "Pace",
+        "id": 3,
+        "name": "pace",
+        "source": "traininghub-main-bundle-base-category"
+      },
+      {
+        "display": "Speed",
+        "id": 4,
+        "name": "speed",
+        "source": "traininghub-main-bundle-base-category"
+      },
+      {
+        "display": "Swimming Style",
+        "id": 5,
+        "name": "swimmingStyle",
+        "source": "traininghub-main-bundle-base-category"
+      },
+      {
+        "display": "Power",
+        "id": 6,
+        "name": "power",
+        "source": "traininghub-main-bundle-base-category"
+      },
+      {
+        "display": "Cadence",
+        "id": 7,
+        "name": "cadence",
+        "source": "traininghub-main-bundle-base-category"
+      },
+      {
+        "display": "Effort Pace",
+        "id": 8,
+        "name": "adjustedPace",
+        "source": "traininghub-main-bundle-base-category"
+      },
+      {
+        "display": "FTP",
+        "id": 9,
+        "name": "ftp",
+        "source": "traininghub-main-bundle-base-category"
+      },
+      {
+        "display": "Grade System",
+        "id": 10,
+        "name": "gradeSystem",
+        "source": "traininghub-main-bundle-base-category"
+      }
+    ],
+    "intensity_unit": [
+      {
+        "display": "min/km",
+        "id": 1,
+        "name": "min/km"
+      },
+      {
+        "display": "min/mi",
+        "id": 2,
+        "name": "min/mi"
+      },
+      {
+        "display": "s/100m",
+        "id": 3,
+        "name": "s/100m"
+      },
+      {
+        "display": "km/h",
+        "id": 4,
+        "name": "km/h"
+      },
+      {
+        "display": "mph",
+        "id": 5,
+        "name": "mph"
+      },
+      {
+        "display": "kg",
+        "id": 6,
+        "name": "kg"
+      },
+      {
+        "display": "lbs",
+        "id": 7,
+        "name": "lbs"
+      }
+    ],
+    "rest_type": [
+      {
+        "display": "Manual End",
+        "display_key": "\u624b\u52a8\u7ed3\u675f",
+        "id": 0,
+        "name": "manualEnd"
+      },
+      {
+        "display": "Time",
+        "display_key": "\u65f6\u95f4",
+        "id": 1,
+        "name": "time"
+      },
+      {
+        "display": "HR Recovery",
+        "display_key": "\u5fc3\u7387\u6062\u590d",
+        "id": 2,
+        "name": "heart"
+      },
+      {
+        "display": "No Rest",
+        "display_key": "\u4e0d\u4f11\u606f",
+        "id": 3,
+        "name": "noRest"
+      },
+      {
+        "display": "Distance",
+        "display_key": "\u8ddd\u79bb",
+        "id": 4,
+        "name": "distance"
+      }
+    ],
+    "sport_category": [
+      {
+        "display": "Bike",
+        "display_key": "H2006",
+        "exercise_types": [
+          "warmup",
+          "train",
+          "relax"
+        ],
+        "icon_name": "icon-cycle",
+        "name": "bike"
+      },
+      {
+        "display": "Bouldering",
+        "display_key": "H9076",
+        "exercise_types": [
+          "warmup",
+          "train",
+          "relax",
+          "rest"
+        ],
+        "icon_name": "icon-bouldering_w",
+        "name": "bouldering"
+      },
+      {
+        "display": "Indoor Climb",
+        "display_key": "H9038",
+        "exercise_types": [
+          "warmup",
+          "train",
+          "relax",
+          "rest"
+        ],
+        "icon_name": "icon-indoor_climb",
+        "name": "indoorClimb"
+      },
+      {
+        "display": "Run",
+        "display_key": "H2005",
+        "exercise_types": [
+          "warmup",
+          "train",
+          "relax"
+        ],
+        "icon_name": "icon-outrun",
+        "name": "run"
+      },
+      {
+        "display": "Strength",
+        "display_key": "H2008",
+        "exercise_types": [
+          "warmup",
+          "train",
+          "relax",
+          "rest"
+        ],
+        "icon_name": "icon-strength",
+        "name": "strength"
+      },
+      {
+        "display": "Swim",
+        "display_key": "H2007",
+        "exercise_types": [
+          "warmup",
+          "train",
+          "relax"
+        ],
+        "icon_name": "icon-openwater",
+        "name": "swim"
+      },
+      {
+        "display": "Trail Run",
+        "display_key": "H1003",
+        "exercise_types": [
+          "warmup",
+          "train",
+          "relax"
+        ],
+        "icon_name": "icon-trailrun",
+        "name": "trailRun"
+      }
+    ],
+    "sport_type": [
+      {
+        "display": "Category GroupSport",
+        "id": -10000,
+        "name": "Category_GroupSport"
+      },
+      {
+        "display": "Category Leisure",
+        "id": -1100,
+        "name": "Category_Leisure"
+      },
+      {
+        "display": "Category Ball",
+        "id": -1000,
+        "name": "Category_Ball"
+      },
+      {
+        "display": "Category Fishing",
+        "id": -707,
+        "name": "Category_Fishing"
+      },
+      {
+        "display": "Category Aquatics",
+        "id": -700,
+        "name": "Category_Aquatics"
+      },
+      {
+        "display": "Category Ski",
+        "id": -500,
+        "name": "Category_Ski"
+      },
+      {
+        "display": "Category Strength",
+        "id": -402,
+        "name": "Category_Strength"
+      },
+      {
+        "display": "Category Cardio",
+        "id": -400,
+        "name": "Category_Cardio"
+      },
+      {
+        "display": "Category Swim",
+        "id": -300,
+        "name": "Category_Swim"
+      },
+      {
+        "display": "Category Bike",
+        "id": -200,
+        "name": "Category_Bike"
+      },
+      {
+        "display": "Category Climb",
+        "id": -105,
+        "name": "Category_Climb"
+      },
+      {
+        "display": "Category Walk",
+        "id": -104,
+        "name": "Category_Walk"
+      },
+      {
+        "display": "Category Run",
+        "id": -100,
+        "name": "Category_Run"
+      },
+      {
+        "display": "All",
+        "id": 0,
+        "name": "All"
+      },
+      {
+        "display": "Custom Sport",
+        "id": 98,
+        "name": "Custom_Sport"
+      },
+      {
+        "display": "Run",
+        "id": 100,
+        "name": "Run"
+      },
+      {
+        "display": "Indoor Run",
+        "id": 101,
+        "name": "Indoor_Run"
+      },
+      {
+        "display": "Trail Run",
+        "id": 102,
+        "name": "Trail_Run"
+      },
+      {
+        "display": "Track Run",
+        "id": 103,
+        "name": "Track_Run"
+      },
+      {
+        "display": "Hike",
+        "id": 104,
+        "name": "Hike"
+      },
+      {
+        "display": "Mtn Climb",
+        "id": 105,
+        "name": "Mtn_Climb"
+      },
+      {
+        "display": "Climb",
+        "id": 106,
+        "name": "Climb"
+      },
+      {
+        "display": "Bike",
+        "id": 200,
+        "name": "Bike"
+      },
+      {
+        "display": "Indoor Bike",
+        "id": 201,
+        "name": "Indoor_Bike"
+      },
+      {
+        "display": "Road Ebike",
+        "id": 202,
+        "name": "Road_Ebike"
+      },
+      {
+        "display": "Gravel Road Bike",
+        "id": 203,
+        "name": "Gravel_Road_Bike"
+      },
+      {
+        "display": "Mountain Riding",
+        "id": 204,
+        "name": "Mountain_Riding"
+      },
+      {
+        "display": "Mountain Ebike",
+        "id": 205,
+        "name": "Mountain_Ebike"
+      },
+      {
+        "display": "Helmet Bike",
+        "id": 299,
+        "name": "Helmet_Bike"
+      },
+      {
+        "display": "Pool Swim",
+        "id": 300,
+        "name": "Pool_Swim"
+      },
+      {
+        "display": "Open Water",
+        "id": 301,
+        "name": "Open_Water"
+      },
+      {
+        "display": "Gym Cardio",
+        "id": 400,
+        "name": "Gym_Cardio"
+      },
+      {
+        "display": "GPS Cardio",
+        "id": 401,
+        "name": "GPS_Cardio"
+      },
+      {
+        "display": "Strength",
+        "id": 402,
+        "name": "Strength"
+      },
+      {
+        "display": "Ski",
+        "id": 500,
+        "name": "Ski"
+      },
+      {
+        "display": "Snowboard",
+        "id": 501,
+        "name": "Snowboard"
+      },
+      {
+        "display": "XC Ski",
+        "id": 502,
+        "name": "XC_Ski"
+      },
+      {
+        "display": "Ski Touring",
+        "id": 503,
+        "name": "Ski_Touring"
+      },
+      {
+        "display": "Row",
+        "id": 700,
+        "name": "Row"
+      },
+      {
+        "display": "Indoor Row",
+        "id": 701,
+        "name": "Indoor_Row"
+      },
+      {
+        "display": "Whitewater",
+        "id": 702,
+        "name": "Whitewater"
+      },
+      {
+        "display": "Flatwater",
+        "id": 704,
+        "name": "Flatwater"
+      },
+      {
+        "display": "Windsurfing",
+        "id": 705,
+        "name": "Windsurfing"
+      },
+      {
+        "display": "Speedsurfing",
+        "id": 706,
+        "name": "Speedsurfing"
+      },
+      {
+        "display": "Boat Fishing Lure",
+        "id": 707,
+        "name": "Boat_Fishing_Lure"
+      },
+      {
+        "display": "Shore Fishing Lure",
+        "id": 708,
+        "name": "Shore_Fishing_Lure"
+      },
+      {
+        "display": "Pond Fishing Lure",
+        "id": 709,
+        "name": "Pond_Fishing_Lure"
+      },
+      {
+        "display": "Kayak Fishing Lure",
+        "id": 710,
+        "name": "Kayak_Fishing_Lure"
+      },
+      {
+        "display": "Inshore Fishing",
+        "id": 711,
+        "name": "Inshore_Fishing"
+      },
+      {
+        "display": "Offshore Fishing",
+        "id": 712,
+        "name": "Offshore_Fishing"
+      },
+      {
+        "display": "Boat Fly Fishing",
+        "id": 713,
+        "name": "Boat_Fly_Fishing"
+      },
+      {
+        "display": "Shore Fly Fishing",
+        "id": 714,
+        "name": "Shore_Fly_Fishing"
+      },
+      {
+        "display": "Surf Fishing",
+        "id": 715,
+        "name": "Surf_Fishing"
+      },
+      {
+        "display": "IndoorClimb",
+        "id": 800,
+        "name": "IndoorClimb"
+      },
+      {
+        "display": "Bouldering",
+        "id": 801,
+        "name": "Bouldering"
+      },
+      {
+        "display": "Walk",
+        "id": 900,
+        "name": "Walk"
+      },
+      {
+        "display": "Jump Rope",
+        "id": 901,
+        "name": "Jump_Rope"
+      },
+      {
+        "display": "Climb Stairs",
+        "id": 902,
+        "name": "Climb_Stairs"
+      },
+      {
+        "display": "Elliptical",
+        "id": 903,
+        "name": "Elliptical"
+      },
+      {
+        "display": "Yoga",
+        "id": 904,
+        "name": "Yoga"
+      },
+      {
+        "display": "Pilates",
+        "id": 905,
+        "name": "Pilates"
+      },
+      {
+        "display": "Boxing",
+        "id": 906,
+        "name": "Boxing"
+      },
+      {
+        "display": "Badminton",
+        "id": 1000,
+        "name": "Badminton"
+      },
+      {
+        "display": "TableTennis",
+        "id": 1001,
+        "name": "TableTennis"
+      },
+      {
+        "display": "Basketball",
+        "id": 1002,
+        "name": "Basketball"
+      },
+      {
+        "display": "Football",
+        "id": 1003,
+        "name": "Football"
+      },
+      {
+        "display": "Pickleball",
+        "id": 1004,
+        "name": "Pickleball"
+      },
+      {
+        "display": "Tennis",
+        "id": 1005,
+        "name": "Tennis"
+      },
+      {
+        "display": "Padel",
+        "id": 1006,
+        "name": "Padel"
+      },
+      {
+        "display": "Frisbee",
+        "id": 1100,
+        "name": "Frisbee"
+      },
+      {
+        "display": "Skateboarding",
+        "id": 1101,
+        "name": "Skateboarding"
+      },
+      {
+        "display": "Triathlon",
+        "id": 10000,
+        "name": "Triathlon"
+      },
+      {
+        "display": "Multi Sport",
+        "id": 10001,
+        "name": "Multi_Sport"
+      },
+      {
+        "display": "Ski Touring Old",
+        "id": 10002,
+        "name": "Ski_Touring_Old"
+      },
+      {
+        "display": "Multi Pitch",
+        "id": 10003,
+        "name": "Multi_Pitch"
+      }
+    ],
+    "target_type": [
+      {
+        "display": "Not Set",
+        "display_key": "R6008",
+        "id": 0,
+        "name": "notSet"
+      },
+      {
+        "display": "Manual End",
+        "display_key": "\u624b\u52a8\u7ed3\u675f",
+        "id": 1,
+        "name": "manualEnd"
+      },
+      {
+        "display": "Time",
+        "display_key": "\u65f6\u95f4",
+        "id": 2,
+        "name": "time"
+      },
+      {
+        "display": "Count",
+        "display_key": "\u6b21\u6570",
+        "id": 3,
+        "name": "count"
+      },
+      {
+        "display": "Heart Rate",
+        "display_key": "\u5fc3\u7387",
+        "id": 4,
+        "name": "heart"
+      },
+      {
+        "display": "Distance",
+        "display_key": "\u8ddd\u79bb",
+        "id": 5,
+        "name": "distance"
+      },
+      {
+        "display": "Training Load",
+        "display_key": "\u8d1f\u8377",
+        "id": 6,
+        "name": "load"
+      },
+      {
+        "display": "HR Recovery",
+        "display_key": "\u5fc3\u7387\u6062\u590d",
+        "id": 7,
+        "name": "heartRateRecovery"
+      },
+      {
+        "display": "Cumulative Climb",
+        "display_key": "\u7d2f\u8ba1\u4e0a\u5347",
+        "id": 8,
+        "name": "cumulativeClimb"
+      },
+      {
+        "display": "Routes",
+        "display_key": "\u7ebf\u8def",
+        "id": 9,
+        "name": "routes"
+      }
+    ]
+  },
+  "generated_at": "2026-04-20T07:08:00.805545+00:00",
+  "known_display_strings": {
+    "% Effort Pace": [
+      "H9031",
+      "T3028"
+    ],
+    "% Threshold Pace": [
+      "S2063"
+    ],
+    "Bike": [
+      "H1007",
+      "H1065",
+      "H2006",
+      "T4001",
+      "T4002",
+      "T4003",
+      "T4004",
+      "T4005",
+      "T4006",
+      "T4007",
+      "T4008"
+    ],
+    "Bouldering": [
+      "C6096",
+      "H9076",
+      "S4657"
+    ],
+    "Cadence": [
+      "H2020",
+      "H5007",
+      "H5037",
+      "R6012",
+      "S2651",
+      "S3528",
+      "T3022",
+      "T3023"
+    ],
+    "Cool Down": [
+      "H6036",
+      "T1122",
+      "T3013",
+      "T3014",
+      "T3015",
+      "T4014",
+      "T4015",
+      "T4016",
+      "T5023",
+      "T5024",
+      "T5025"
+    ],
+    "Distance": [
+      "H1040",
+      "R1003",
+      "R6005",
+      "S2657",
+      "Y1013",
+      "Y5003"
+    ],
+    "Effort Pace": [
+      "H9024",
+      "T3027"
+    ],
+    "HR Recovery": [
+      "S4112"
+    ],
+    "Heart Rate": [
+      "H5031",
+      "R6009",
+      "S2081",
+      "T3020"
+    ],
+    "Indoor Climb": [
+      "H9038",
+      "S4656"
+    ],
+    "Not Set": [
+      "R6008",
+      "R6014"
+    ],
+    "Not set": [
+      "S4313"
+    ],
+    "Pace": [
+      "H5003",
+      "R6010",
+      "T3021"
+    ],
+    "Power": [
+      "H5033",
+      "R6011",
+      "S3529",
+      "T3025"
+    ],
+    "Rest": [
+      "H1217",
+      "H6035",
+      "H9126",
+      "S3618",
+      "T1123",
+      "T3007",
+      "T3008",
+      "T3009",
+      "T4009",
+      "T4010",
+      "T5018",
+      "T5019"
+    ],
+    "Routes": [
+      "C6195",
+      "H9039",
+      "TG5038"
+    ],
+    "Run": [
+      "H1001",
+      "H1064",
+      "H2005",
+      "T3002",
+      "T3003",
+      "T3004",
+      "T3005",
+      "T3006"
+    ],
+    "Speed": [
+      "H5005",
+      "S2064",
+      "T3024",
+      "Y9015"
+    ],
+    "Strength": [
+      "H1012",
+      "H1067",
+      "H2008",
+      "H9056",
+      "P10597",
+      "P12359",
+      "P12409",
+      "P12410",
+      "P12412",
+      "P12414",
+      "P12416",
+      "P12418",
+      "P12420",
+      "P12422",
+      "P12424",
+      "P12426",
+      "P12428",
+      "P12445",
+      "P12457",
+      "P12458",
+      "P12459",
+      "P12460",
+      "P12461",
+      "P12462",
+      "P12463",
+      "P12464",
+      "P12465",
+      "P12466"
+    ],
+    "Swim": [
+      "H1066",
+      "H2007"
+    ],
+    "Time": [
+      "H6016",
+      "R6004",
+      "S1735",
+      "Y1012",
+      "Y5004"
+    ],
+    "Trail Run": [
+      "H1003"
+    ],
+    "Training": [
+      "T1121",
+      "T3001",
+      "T4000",
+      "T5000"
+    ],
+    "Training Load": [
+      "H1056",
+      "N1084",
+      "R1001",
+      "S4491",
+      "SQ1003",
+      "Y1010"
+    ],
+    "Warm Up": [
+      "G3038",
+      "H6034",
+      "N1090",
+      "T1120",
+      "T3010",
+      "T3011",
+      "T3012",
+      "T4011",
+      "T4012",
+      "T4013",
+      "T5020",
+      "T5021",
+      "T5022"
+    ]
+  },
+  "notes": [
+    "This registry is extracted from public Training Hub frontend assets, not from the private COROS API payloads.",
+    "Target/rest display labels sometimes appear inline in the main bundle as non-English literals and are normalized with a small override table.",
+    "Intensity display is partially composite in COROS. intensityType is a base category; final UI labels may also depend on fields like hrType or percent flags that are not fully extracted here yet."
+  ],
+  "source": {
+    "index_url": "https://training.coros.com/",
+    "locale_url": "https://static.coros.com/locale/coros-traininghub-v2/en-US.prod.js?t=1974076",
+    "main_url": "https://static.coros.com/coros-traininghub-v2/public/main-bppa-S7r.js"
+  }
+}
