@@ -1,8 +1,19 @@
 # coros-training-mcp
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for COROS training data, workout authoring, workout scheduling, and builder-aware agent tooling.
+A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for COROS with **first-class running workout authoring and editing** — pace-based intervals, distance targets, repeat groups, and clone-and-swap edits of scheduled runs — on top of the standard COROS training data, scheduling, strength, and activity export tools.
 
-This project is built on top of [cygnusb/coros-mcp](https://github.com/cygnusb/coros-mcp) and keeps that repository as an upstream reference. It extends the original project with workout taxonomy docs, sport-specific running tools, live builder catalog extraction, shared run-step schemas, and a much broader automated test suite.
+This project is built on top of [cygnusb/coros-mcp](https://github.com/cygnusb/coros-mcp) and keeps that repository as an upstream reference.
+
+### Why this fork
+
+Upstream is a solid read-oriented COROS MCP, but its authoring story is shaped around time-and-power workouts (cycling, strength). This fork is the one to pick when an agent needs to **build or edit running workouts** end-to-end:
+
+- **Sport-specific run tools** — `create_run_workout` and `update_run_workout` speak distance/pace/HR targets natively, not just duration/power.
+- **Shared run-step schema** — `get_run_workout_schema` exposes the exact contract so agents don't guess which fields are valid on create vs. update.
+- **Clone-and-swap edits** — change a scheduled run's distance, pace band, or rep count without destroying the calendar entry.
+- **Live builder catalog** — enum values (step kinds, target types, intensity types) are extracted from the Training Hub builder itself, not hand-maintained.
+- **Workout taxonomy docs** — explicit disambiguation of library workouts, scheduled entries, and plan containers, so agents stop confusing `list_workouts` with the calendar.
+- **Broader automated test suite** covering the running-edit paths.
 
 **No API key required.** This server authenticates directly with your Coros Training Hub credentials. Your token is stored securely in your system keyring (or an encrypted local file as fallback), never transmitted anywhere except to Coros.
 
@@ -12,10 +23,23 @@ For the distinction between library workouts, scheduled calendar entries, and pl
 
 Ask your AI assistant questions like:
 
+**Running workouts (the fork's focus):**
+
+- "Create a 5×1km threshold workout at 4:05–4:15/km with 2-minute jog recovery"
+- "Change my Tuesday VO2 workout to 6 reps instead of 5"
+- "Build a 90-minute long run with 4×8min at marathon pace in the middle"
+- "Move Thursday's tempo run to Friday"
+- "Replace my scheduled Sunday long run with a 16km progression at easy→steady pace"
+
+**Training data & recovery:**
+
 - "How much deep sleep and REM did I get last week?"
 - "What was my HRV trend over the last 4 weeks?"
 - "Show me my resting heart rate and training load for last week"
 - "How many steps did I average per day this month?"
+
+**Activities, calendar, and other sports:**
+
 - "List my rides from last month"
 - "Show me the details of my last long ride"
 - "Create a 90-minute sweet spot workout for me"
@@ -50,264 +74,90 @@ Ask your AI assistant questions like:
 
 ## Workout Taxonomy
 
-The fork distinguishes between three related objects:
+Three distinct objects, often confused:
 
-- `library workout`: a reusable workout/program in your account library
-- `scheduled workout entry`: a calendar occurrence on a specific day
-- `plan container`: the higher-level COROS schedule/plan that owns scheduled entries
+- **library workout** — reusable program in your account. Queried by `list_workouts`.
+- **scheduled entry** — a calendar occurrence of a library workout on a specific day. Queried by `list_planned_activities`. May have different IDs than its source workout.
+- **plan container** — the higher-level COROS schedule/plan that owns scheduled entries.
 
-Important consequences:
+GPX/FIT/TCX/KML export applies to completed activities only — structured library workouts use a separate share flow in the app. The MCP writes to COROS server state; device sync is still handled by the COROS app/watch.
 
-- `list_workouts` shows library workouts, not calendar entries
-- `list_scheduled_workouts` shows scheduled entries, not the full library
-- scheduling a workout may create a scheduled copy with different IDs than the original library workout
-- the MCP writes to COROS server state, but device sync is still handled by the COROS app/watch
-- running creation/editing is moving toward sport-specific tools like `create_run_workout` and `update_run_workout`
-- `get_run_workout_schema` exposes the exact shared run-step contract so agents do not need to guess which fields are valid on create vs update
-- the older generic `create_workout` remains available, but it is still shaped around simpler time/power workout construction
-- GPX/FIT/TCX/KML export applies to completed activities, not to structured library workouts; structured workouts use a separate share flow in the app
-
-See [docs/workout-taxonomy.md](./docs/workout-taxonomy.md) for the full explanation.
-
-For automated enum discovery from public Training Hub assets and the live Training Hub builder, see [docs/enum-extraction.md](./docs/enum-extraction.md).
+See [docs/workout-taxonomy.md](./docs/workout-taxonomy.md) for full detail, and [docs/enum-extraction.md](./docs/enum-extraction.md) for how enum values are discovered from the live Training Hub builder.
 
 ---
 
 ## Setup
 
-### Recommended Local Setup
+Requires Python ≥ 3.11 and a COROS Training Hub account.
 
-For local use on macOS, the recommended path in this repo is:
-
-1. install the repo into a local virtualenv
-2. store COROS credentials in macOS Keychain
-3. point your MCP client at the included wrapper script [run-coros-mcp.zsh](./run-coros-mcp.zsh)
-
-That gives you:
-
-- no plaintext COROS credentials in your MCP config
-- automatic `COROS_EMAIL` / `COROS_PASSWORD` loading at process start
-- a default `COROS_REGION` value with local override support
-
-The wrapper expects these Keychain items:
-
-- service `coros-mcp-email`
-- service `coros-mcp-password`
-
-Add them with:
-
-```bash
-security add-generic-password -U -a "$USER" -s "coros-mcp-email" -w "you@example.com"
-security add-generic-password -U -a "$USER" -s "coros-mcp-password" -w "your-coros-password"
-```
-
-Then point your MCP client at:
-
-```bash
-/path/to/coros-training-mcp/run-coros-mcp.zsh
-```
-
-### Standard Cross-Platform Path
-
-If you are not on macOS, or you would rather avoid the wrapper script, the more standard setup path is:
-
-1. install the repo into a local virtualenv
-2. run the raw `coros-mcp` binary from that virtualenv
-3. provide credentials via a local `.env` file or MCP-scoped environment variables
-
-That looks like:
-
-```bash
-/path/to/coros-training-mcp/.venv/bin/coros-mcp serve
-```
-
-This path is a better fit when:
-
-- you want the most typical Python MCP server setup
-- you are using Linux or Windows
-- you prefer explicit env vars over macOS Keychain integration
-- you want the same launch pattern as the upstream `cygnusb/coros-mcp` repo
-
-### Option A: Auto-Setup with Claude Code
-
-If you have [Claude Code](https://claude.ai/code), paste this prompt:
-
-```
-Set up the COROS Training MCP server from https://github.com/dholliday3/coros-training-mcp — clone it, create a venv, install it with pip install -e ., configure the included run-coros-mcp.zsh wrapper for MCP, and tell me how to add my COROS credentials to macOS Keychain.
-```
-
-Claude will handle the installation and guide you through configuration.
-
-### Option B: Manual Setup
-
-#### Step 1: Install
+### 1. Install
 
 ```bash
 git clone https://github.com/dholliday3/coros-training-mcp.git
 cd coros-training-mcp
-python3 -m venv .venv
-source .venv/bin/activate  # Windows: .venv\Scripts\activate
-pip install -e .
+python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
+pip install -e .                                     # or: uv pip install -e .
 ```
 
-Or with `uv`:
+### 2. Configure credentials
+
+**macOS (recommended): Keychain + wrapper script.** No plaintext credentials in MCP config, auto-loaded at process start.
 
 ```bash
-uv pip install -e .
+security add-generic-password -U -a "$USER" -s "coros-mcp-email"    -w "you@example.com"
+security add-generic-password -U -a "$USER" -s "coros-mcp-password" -w "your-password"
+./run-coros-mcp.zsh auth-status    # verify
 ```
 
-#### Step 2: Add to Your MCP Client
-
-Recommended on macOS:
-
-```bash
-claude mcp add coros -- /path/to/coros-training-mcp/run-coros-mcp.zsh
-```
-
-Or for Codex:
-
-```bash
-codex mcp add coros -- /path/to/coros-training-mcp/run-coros-mcp.zsh
-```
-
-If you prefer to launch the raw binary directly instead of the wrapper:
-
-```bash
-claude mcp add coros -- /path/to/coros-training-mcp/.venv/bin/coros-mcp serve
-```
-
-Equivalent Codex example:
-
-```bash
-codex mcp add coros -- /path/to/coros-training-mcp/.venv/bin/coros-mcp serve
-```
-
-To limit the MCP to a specific project only (recommended):
-
-```bash
-cd /path/to/your/project
-claude mcp add --scope project coros -- /path/to/coros-training-mcp/.venv/bin/coros-mcp serve
-```
-
-Or add to Claude Desktop (`~/Library/Application Support/Claude/claude_desktop_config.json`):
-
-```json
-{
-  "mcpServers": {
-    "coros": {
-      "command": "/path/to/coros-training-mcp/run-coros-mcp.zsh"
-    }
-  }
-}
-```
-
-Or, for the standard raw-binary path:
-
-```json
-{
-  "mcpServers": {
-    "coros": {
-      "command": "/path/to/coros-training-mcp/.venv/bin/coros-mcp",
-      "args": ["serve"]
-    }
-  }
-}
-```
-
-#### Step 3: Configure Credentials
-
-**Option A — macOS Keychain + wrapper script (recommended for local use):**
-
-Add the expected Keychain items:
-
-```bash
-security add-generic-password -U -a "$USER" -s "coros-mcp-email" -w "you@example.com"
-security add-generic-password -U -a "$USER" -s "coros-mcp-password" -w "your-coros-password"
-```
-
-Then verify the wrapper can read them:
-
-```bash
-/path/to/coros-training-mcp/run-coros-mcp.zsh auth-status
-```
-
-You can override the default region if needed:
-
-```bash
-COROS_REGION=eu /path/to/coros-training-mcp/run-coros-mcp.zsh auth-status
-```
-
-**Option B — `.env` file:**
-
-Create a `.env` file in your project directory:
+**Linux / Windows / anywhere else: `.env` file** in your project directory (or equivalent MCP-scoped env vars):
 
 ```
 COROS_EMAIL=you@example.com
 COROS_PASSWORD=yourpassword
-COROS_REGION=eu
+COROS_REGION=eu    # or us, asia
 ```
 
-The server authenticates automatically on the first request and re-authenticates transparently whenever the token expires. No manual auth step needed.
+The server authenticates on the first request and refreshes tokens transparently. Tokens are stored in your system keyring (or an encrypted local file fallback), never transmitted anywhere except to COROS.
 
-If your MCP client supports inline env vars, that works too. For example, the same raw-binary setup can be configured with `COROS_EMAIL`, `COROS_PASSWORD`, and `COROS_REGION` set in the MCP server environment instead of using a `.env` file.
-
-**Option C — Manual authentication:**
-
-Run the following command in your terminal — **outside** of any Claude session:
+### 3. Register with your MCP client
 
 ```bash
-coros-mcp auth
+# macOS + wrapper (recommended):
+claude mcp add coros -- /path/to/coros-training-mcp/run-coros-mcp.zsh
+
+# Raw binary (any platform):
+claude mcp add coros -- /path/to/coros-training-mcp/.venv/bin/coros-mcp serve
+
+# Scope to one project only:
+claude mcp add --scope project coros -- /path/to/coros-training-mcp/run-coros-mcp.zsh
 ```
 
-You will be prompted for your email, password, and region (`eu`, `us`, or `asia`). This stores both the Training Hub web token and the mobile API token (used for sleep data). Your credentials are sent directly to Coros and the tokens are stored securely in your system keyring (or an encrypted local file as fallback). **You only need to do this once** — the tokens persist across restarts.
+Swap `claude mcp add` for `codex mcp add` if you're on Codex. For Claude Desktop, add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
 
-> **Note:** The mobile login (`apieu.coros.com`) will log you out of the Coros mobile app on your phone. If you want to avoid this, use `coros-mcp auth-web` instead — it stores only the web token, and the mobile token will be obtained automatically when you first request sleep data.
+```json
+{ "mcpServers": { "coros": { "command": "/path/to/coros-training-mcp/run-coros-mcp.zsh" } } }
+```
 
-**Other auth commands:**
+### CLI commands
 
 ```bash
-/path/to/coros-training-mcp/run-coros-mcp.zsh        # start via Keychain-backed wrapper
-/path/to/coros-training-mcp/run-coros-mcp.zsh auth-status
-coros-mcp serve         # Start the MCP server (used by Claude Code / Claude Desktop)
-coros-mcp auth-web      # Web API only — skips mobile login (sleep data obtained lazily)
-coros-mcp auth-mobile   # Mobile API only (sleep data)
-coros-mcp auth-status   # Check if authenticated
-coros-mcp auth-clear    # Remove stored tokens
+coros-mcp serve         # start the MCP server (used by MCP clients)
+coros-mcp auth          # interactive login — stores web + mobile tokens
+coros-mcp auth-web      # web token only (skips mobile login; sleep data lazy-loads)
+coros-mcp auth-mobile   # mobile token only (used for sleep data)
+coros-mcp auth-status   # check authentication state
+coros-mcp auth-clear    # remove stored tokens
 ```
+
+> The mobile login (`apieu.coros.com`) logs you out of the COROS mobile app on your phone. Use `auth-web` to avoid this — the mobile token is obtained automatically on the first sleep-data request.
 
 ---
 
 ## Tool Reference
 
-### `authenticate_coros`
+### Auth — `authenticate_coros`, `authenticate_coros_mobile`, `check_coros_auth`
 
-Log in with your Coros credentials. The auth token is stored securely in your system keyring (or an encrypted file as fallback).
-
-```json
-{ "email": "you@example.com", "password": "yourpassword", "region": "eu" }
-```
-
-Returns: `authenticated`, `user_id`, `region`, `message`
-
-### `authenticate_coros_mobile`
-
-Authenticate with the Coros mobile API only. This is mainly useful if you need to restore sleep-data access without redoing full web authentication.
-
-```json
-{ "email": "you@example.com", "password": "yourpassword", "region": "eu" }
-```
-
-Returns: `authenticated`, `user_id`, `region`, `message`
-
-### `check_coros_auth`
-
-Check whether valid web and mobile tokens are stored and how long the web token remains valid.
-
-```json
-{}
-```
-
-Returns: `authenticated`, `user_id`, `region`, `expires_in_hours`, `mobile_authenticated`, `mobile_token_status`
+You normally don't call these directly — credentials from Keychain or `.env` are picked up automatically. They exist for explicit login/reauth (`{ "email", "password", "region" }`) and status checks (`check_coros_auth` returns `authenticated`, `expires_in_hours`, `mobile_authenticated`, `mobile_token_status`). `authenticate_coros_mobile` is useful for restoring sleep-data access without redoing web auth.
 
 ### `get_daily_metrics`
 
@@ -419,46 +269,76 @@ Returns: `workouts` (list), `count`
 
 Each workout includes: `id`, `name`, `sport_type`, `sport_name`, `estimated_time_seconds`, `exercise_count`, `exercises` (list of steps with `name`, `duration_seconds`, `power_low_w`, `power_high_w`)
 
-### `create_workout`
+### `create_run_workout`
 
-Create a new structured workout. Workouts appear in the Coros app and can be synced to the watch. Steps can be plain steps or repeat groups for intervals.
+Create a running workout with run-native step kinds (`warmup`, `training`, `rest`, `cooldown`), distance or time targets, and optional pace / HR intensity ranges. Supports repeat groups for intervals.
 
-**Plain steps:**
+**5×1km threshold with jog recovery:**
 
 ```json
 {
-  "name": "Sweet Spot 90min",
-  "sport_type": 2,
+  "name": "Tuesday Threshold",
   "steps": [
-    {"name": "15:00 Warmup",     "duration_minutes": 15, "power_low_w": 148, "power_high_w": 192},
-    {"name": "20:00 Sweet Spot", "duration_minutes": 20, "power_low_w": 260, "power_high_w": 275},
-    {"name": "5:00 Rest",        "duration_minutes":  5, "power_low_w": 100, "power_high_w": 150},
-    {"name": "20:00 Sweet Spot", "duration_minutes": 20, "power_low_w": 260, "power_high_w": 275},
-    {"name": "30:00 Cooldown",   "duration_minutes": 30, "power_low_w": 100, "power_high_w": 192}
+    {"kind": "warmup",   "name": "Warm-up",  "target_type": "distance", "target_distance_meters": 2000},
+    {"repeat": 5, "name": "Main Set", "steps": [
+      {"kind": "training", "name": "Rep",      "target_type": "distance", "target_distance_meters": 1000,
+       "intensity_type": 3, "intensity_value": 245, "intensity_value_extend": 255, "intensity_display_unit": 2},
+      {"kind": "rest",     "name": "Recovery", "target_type": "time",     "target_duration_seconds": 120}
+    ]},
+    {"kind": "cooldown", "name": "Cool-down", "target_type": "distance", "target_distance_meters": 1500}
   ]
 }
 ```
 
-**With repeat groups (intervals):**
+Pace targets use `intensity_type: 3` with `intensity_value` / `intensity_value_extend` as seconds-per-km and `intensity_display_unit: 2`. For the full field vocabulary (HR zones, percent-of-LT, named intensity presets), call `get_run_workout_schema` or see [run_workout_schema.py](./run_workout_schema.py).
+
+Returns: `workout_id`, `sport_type`, `estimated_time_seconds`, `estimated_distance_meters`, `steps_count`, `message`
+
+### `update_run_workout`
+
+Clone-and-edit an existing running workout. Select each step to change by `step_name`, `step_id`, or `step_index`, and patch it with any run-step field used by `create_run_workout`. The original workout is preserved; a new workout ID is returned. If the original was scheduled, re-schedule the replacement with `schedule_workout`.
+
+```json
+{
+  "workout_id": "476023839273435149",
+  "name": "Tuesday Threshold (6×1km)",
+  "step_updates": [
+    {"step_name": "Main Set", "repeat": 6},
+    {"step_name": "Rep", "target_distance_meters": 1000, "intensity_value": 240, "intensity_value_extend": 250}
+  ]
+}
+```
+
+Returns: `new_workout_id`, `original_workout_id`, `name`, `steps_count`, `message`
+
+### `get_run_workout_schema`
+
+Return the shared run-step schema used by both `create_run_workout` and `update_run_workout`, including allowed step kinds, target types, intensity presets pulled from the live Training Hub builder, and required vs. optional fields. Call this before authoring to avoid guessing which fields are valid.
+
+```json
+{}
+```
+
+### `create_workout`
+
+Generic time-and-power workout builder (primarily cycling). For running, prefer `create_run_workout`. Supports plain steps and nested `repeat` groups for intervals.
 
 ```json
 {
   "name": "3×10min Sweet Spot",
   "sport_type": 2,
   "steps": [
-    {"name": "Warmup",    "duration_minutes": 10, "power_low_w": 150, "power_high_w": 200},
+    {"name": "Warmup",   "duration_minutes": 10, "power_low_w": 150, "power_high_w": 200},
     {"repeat": 3, "steps": [
       {"name": "Sweet Spot", "duration_minutes": 10, "power_low_w": 265, "power_high_w": 285},
       {"name": "Recovery",   "duration_minutes":  3, "power_low_w": 150, "power_high_w": 175}
     ]},
-    {"name": "Cooldown",  "duration_minutes": 11, "power_low_w": 150, "power_high_w": 200}
+    {"name": "Cooldown", "duration_minutes": 11, "power_low_w": 150, "power_high_w": 200}
   ]
 }
 ```
 
-`sport_type`: `2` = Indoor Cycling (default), `200` = Road Bike
-
-Returns: `workout_id`, `name`, `total_minutes`, `steps_count`, `message`
+`sport_type`: `2` = Indoor Cycling (default), `200` = Road Bike. Returns: `workout_id`, `name`, `total_minutes`, `steps_count`, `message`.
 
 ### `delete_workout`
 
@@ -553,36 +433,6 @@ Returns: `exercises` (list), `count`, `sport_type`
 
 ---
 
-## Requirements
-
-- Python ≥ 3.11
-- A Coros account (Training Hub)
-
----
-
-## Project Structure
-
-```
-coros-mcp/
-├── server.py          # MCP server with tool definitions
-├── coros_api.py       # Coros API client (auth, requests, parsers)
-├── models.py          # Pydantic data models
-├── cli.py             # CLI entry point (serve, auth, auth-mobile, auth-status, auth-clear)
-├── auth/              # Token storage (keyring + encrypted file fallback)
-├── pyproject.toml     # Project metadata & dependencies
-└── docs/
-    └── mobile-token.md  # Mobile API token background (legacy reference)
-```
-
-## Dependencies
-
-- [fastmcp](https://github.com/jlowin/fastmcp) — MCP framework
-- [httpx](https://www.python-httpx.org/) — Async HTTP client
-- [pydantic](https://docs.pydantic.dev/) — Data validation
-- [pycryptodome](https://pycryptodome.readthedocs.io/) — AES encryption for mobile API auth
-- [keyring](https://github.com/jaraco/keyring) — Secure token storage
-- [python-dotenv](https://github.com/theskumar/python-dotenv) — `.env` support
-
 ## Disclaimer
 
-This project uses the **unofficial** Coros Training Hub API. The API may change at any time without notice. Use at your own risk.
+This project uses the **unofficial** COROS Training Hub API. The API may change at any time without notice. Use at your own risk.
