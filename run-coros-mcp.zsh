@@ -2,7 +2,8 @@
 
 set -euo pipefail
 
-COROS_MCP_BIN="/Users/danielholliday/workspace/tools/mcp/coros-mcp-fork/.venv/bin/coros-mcp"
+SCRIPT_DIR="${0:A:h}"
+COROS_MCP_BIN="$SCRIPT_DIR/.venv/bin/coros-mcp"
 DEFAULT_REGION="us"
 EMAIL_SERVICE="coros-mcp-email"
 PASSWORD_SERVICE="coros-mcp-password"
