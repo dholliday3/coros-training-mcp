@@ -147,31 +147,26 @@ header nav a:hover { color: var(--text); }
   border: 1px solid var(--border);
   max-width: 660px;
   position: relative;
+  border-radius: 8px;
+  display: flex;
+  align-items: center;
+  gap: 0.75rem;
+  padding: 0.25rem 0.75rem 0.25rem 0;
 }
 
 .install-block--hero { margin-bottom: 2rem; }
 
-.install-block-head {
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.22em;
-  color: var(--accent);
-  padding: 0.5rem 0.6rem 0.5rem 1rem;
-  border-bottom: 1px solid var(--border);
-  background: var(--bg-deep);
-  text-transform: uppercase;
-  display: flex; align-items: center; justify-content: space-between;
-  gap: 0.5rem;
-}
-
 .install-block pre {
   font-family: var(--mono);
-  font-size: 0.92rem;
-  padding: 1.1rem 1.25rem;
+  font-size: 0.94rem;
+  padding: 1rem 0 1rem 1.25rem;
   color: var(--text);
   overflow-x: auto;
   line-height: 1.7;
   tab-size: 2;
+  flex: 1 1 auto;
+  min-width: 0;
+  margin: 0;
 }
 
 .install-block .prompt {
@@ -180,25 +175,29 @@ header nav a:hover { color: var(--text); }
 
 .install-block .comment { color: var(--text-faint); }
 
-/* Copy button */
+/* Copy button — floats on the right of the command row */
 .copy-btn {
-  background: transparent;
-  border: 1px solid var(--border-strong);
+  flex: 0 0 auto;
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
   color: var(--text-dim);
-  font-family: var(--mono);
-  font-size: 0.68rem;
-  letter-spacing: 0.18em;
-  text-transform: uppercase;
-  padding: 0.35rem 0.7rem;
+  font-family: var(--sans);
+  font-size: 0.82rem;
+  font-weight: 500;
+  padding: 0.42rem 0.8rem 0.42rem 0.7rem;
   cursor: pointer;
-  display: inline-flex; align-items: center; gap: 0.45rem;
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  border-radius: 6px;
   transition: border-color 0.15s, color 0.15s, background 0.15s;
+  align-self: center;
 }
 
 .copy-btn:hover {
-  border-color: var(--text-dim);
+  border-color: var(--border-strong);
   color: var(--text);
-  background: var(--bg-elev);
+  background: #1c1c1c;
 }
 
 .copy-btn:focus-visible {
@@ -207,38 +206,23 @@ header nav a:hover { color: var(--text); }
 }
 
 .copy-icon {
-  width: 10px; height: 10px;
-  border: 1.5px solid currentColor;
-  position: relative;
-  display: inline-block;
-}
-
-.copy-icon::before {
-  content: "";
-  position: absolute;
-  top: -3px; left: -3px;
-  width: 10px; height: 10px;
-  border: 1.5px solid currentColor;
-  background: var(--bg-deep);
+  width: 14px;
+  height: 14px;
+  flex: 0 0 auto;
+  display: block;
 }
 
 .copy-btn.is-copied {
   color: var(--ok);
-  border-color: var(--ok);
+  border-color: rgba(74, 222, 128, 0.35);
   background: rgba(74, 222, 128, 0.08);
 }
-.copy-btn.is-copied .copy-icon { border-color: transparent; }
-.copy-btn.is-copied .copy-icon::before {
-  border-color: var(--ok);
-  background: transparent;
-  transform: rotate(45deg) translate(2px, -1px);
-  width: 6px; height: 12px;
-  border-top: none;
-  border-left: none;
-  top: -5px;
-}
 
-.copy-btn.is-failed { color: var(--accent); border-color: var(--accent); }
+.copy-btn.is-failed {
+  color: var(--accent);
+  border-color: rgba(255, 46, 46, 0.45);
+  background: rgba(255, 46, 46, 0.08);
+}
 
 /* ==================================================================
    CTAs
@@ -720,6 +704,16 @@ footer {
   header .wrap { height: 52px; }
   .cta { flex-direction: column; align-items: stretch; }
   .btn { justify-content: center; }
-  .install-block-head { flex-wrap: wrap; }
+  .install-block { flex-direction: column; align-items: stretch; padding: 0; gap: 0; }
+  .install-block pre { padding: 0.95rem 1rem; }
+  .install-block .copy-btn {
+    border-radius: 0;
+    border: none;
+    border-top: 1px solid var(--border);
+    background: var(--bg-deep);
+    justify-content: center;
+    padding: 0.65rem;
+    width: 100%;
+  }
   .tool-call-body { font-size: 0.74rem; }
 }
