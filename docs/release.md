@@ -8,27 +8,24 @@ publishing**. No API tokens exist on any machine. The release workflow lives at
 
 Done once when the package is first registered with PyPI:
 
-1. **Register the pending publisher on TestPyPI**
-   Go to <https://test.pypi.org/manage/account/publishing/> → "Add a new pending publisher":
+1. **Register the pending publisher on PyPI**
+   Go to <https://pypi.org/manage/account/publishing/> → "Add a new pending publisher":
    - PyPI Project Name: `coros-training-mcp`
    - Owner: `dholliday3`
    - Repository name: `coros-training-mcp`
    - Workflow name: `release.yml`
-   - Environment name: `testpypi`
-
-2. **Register the pending publisher on PyPI**
-   Same form at <https://pypi.org/manage/account/publishing/>:
    - Environment name: `pypi`
-   - Everything else identical to TestPyPI.
 
-3. **Create the two GitHub environments**
-   In the repo: Settings → Environments → "New environment".
-   - Create `testpypi` (no protection rules required).
-   - Create `pypi` — recommended protection rules:
-     - Required reviewers: yourself (one-click approval gate before publish).
-     - Deployment branches: restrict to tags only, pattern `v*`.
+2. **Create the `pypi` GitHub environment**
+   Repo → Settings → Environments → "New environment" → `pypi`. Recommended
+   protection rules:
+   - Required reviewers: yourself (one-click approval gate before publish).
+   - Deployment branches and tags: "Selected branches and tags" → add a
+     **Tag** rule (not Branch) with pattern `v*`. If this is set to a branch
+     rule, tag pushes will fail at the deployment gate because `refs/tags/...`
+     doesn't match a branch policy.
 
-After the first successful publish, the "pending" publishers become
+After the first successful publish, the "pending" publisher becomes
 project-scoped; no further action needed.
 
 ## Cutting a release
@@ -48,32 +45,12 @@ git push origin v0.3.0
 
 The workflow runs automatically:
 - Checks out the tagged commit.
-- Verifies `pyproject.toml` version matches the tag (refuses to publish otherwise).
+- Verifies `pyproject.toml` version matches the tag AND the tag is strict
+  `vX.Y.Z` semver (refuses to publish otherwise).
 - Runs the full non-live test suite.
 - Builds sdist + wheel with `uv build`.
 - Smoke-tests the built wheel in a throwaway venv.
-- Publishes to **PyPI** if the tag looks like `vX.Y.Z`; to **TestPyPI** if the
-  tag has any suffix (e.g. `v0.3.0rc1`, `v0.3.0-test`).
-
-## Pre-release / TestPyPI dry-run
-
-Before the first real publish, or for any risky release, tag as a pre-release:
-
-```bash
-git tag v0.3.0rc1
-git push origin v0.3.0rc1
-```
-
-This publishes only to TestPyPI. Verify the install works:
-
-```bash
-uv tool install --index-url https://test.pypi.org/simple/ \
-                --extra-index-url https://pypi.org/simple/ \
-                coros-training-mcp==0.3.0rc1
-coros-mcp help
-```
-
-Once satisfied, cut the real release with a clean `v0.3.0` tag.
+- Publishes to PyPI via OIDC.
 
 ## If something goes wrong
 

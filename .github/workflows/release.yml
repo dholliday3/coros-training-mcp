@@ -1,14 +1,11 @@
 name: Release
 
-# Publish to PyPI / TestPyPI via OIDC trusted publishers — no long-lived tokens.
+# Publish to PyPI via OIDC trusted publishing — no long-lived tokens.
 #
-# Triggered by pushing a version tag:
-#   - `v0.2.0`, `v1.0.0`, etc.        → publishes to PyPI
-#   - `v0.2.0rc1`, `v0.2.0-test`, etc. → publishes to TestPyPI
-#
-# The trusted-publisher configuration on pypi.org and test.pypi.org pins this
-# exact workflow filename (`release.yml`) and the environment names below.
-# Changing either requires updating the publisher config on PyPI first.
+# Triggered by pushing a strict-semver tag (`v0.2.0`, `v1.0.0`, etc.). The
+# trusted-publisher configuration on pypi.org pins this exact workflow
+# filename (`release.yml`) and the environment name `pypi`. Changing either
+# requires updating the publisher config on PyPI first.
 
 on:
   push:
@@ -21,9 +18,6 @@ permissions:
 jobs:
   build:
     runs-on: ubuntu-latest
-    outputs:
-      version: ${{ steps.meta.outputs.version }}
-      is_prerelease: ${{ steps.meta.outputs.is_prerelease }}
     steps:
       - uses: actions/checkout@v4
 
@@ -32,26 +26,18 @@ jobs:
         with:
           enable-cache: true
 
-      - name: Read tag metadata
-        id: meta
-        run: |
-          tag="${GITHUB_REF##refs/tags/}"
-          version="${tag#v}"
-          echo "version=$version" >> "$GITHUB_OUTPUT"
-          # Anything that isn't strictly MAJOR.MINOR.PATCH goes to TestPyPI first.
-          if [[ "$version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
-            echo "is_prerelease=false" >> "$GITHUB_OUTPUT"
-          else
-            echo "is_prerelease=true" >> "$GITHUB_OUTPUT"
-          fi
-
       - name: Verify tag matches pyproject.toml version
         run: |
-          tag_version="${{ steps.meta.outputs.version }}"
+          tag="${GITHUB_REF##refs/tags/}"
+          tag_version="${tag#v}"
           project_version=$(grep -E '^version = ' pyproject.toml | head -1 | sed -E 's/version = "(.*)"/\1/')
           if [[ "$tag_version" != "$project_version" ]]; then
             echo "::error::Tag version ($tag_version) does not match pyproject.toml version ($project_version)."
             echo "Bump pyproject.toml, commit, then re-tag."
+            exit 1
+          fi
+          if [[ ! "$tag_version" =~ ^[0-9]+\.[0-9]+\.[0-9]+$ ]]; then
+            echo "::error::Tag $tag is not strict semver (MAJOR.MINOR.PATCH). Release tags must match ^v[0-9]+\\.[0-9]+\\.[0-9]+$."
             exit 1
           fi
 
@@ -78,29 +64,8 @@ jobs:
           if-no-files-found: error
           retention-days: 7
 
-  publish-testpypi:
-    needs: build
-    if: needs.build.outputs.is_prerelease == 'true'
-    runs-on: ubuntu-latest
-    environment:
-      name: testpypi
-      url: https://test.pypi.org/p/coros-training-mcp
-    permissions:
-      id-token: write  # required for OIDC trusted publishing
-    steps:
-      - uses: actions/download-artifact@v4
-        with:
-          name: dist
-          path: dist/
-
-      - name: Publish to TestPyPI
-        uses: pypa/gh-action-pypi-publish@release/v1
-        with:
-          repository-url: https://test.pypi.org/legacy/
-
   publish-pypi:
     needs: build
-    if: needs.build.outputs.is_prerelease == 'false'
     runs-on: ubuntu-latest
     environment:
       name: pypi
