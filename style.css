@@ -329,42 +329,50 @@ header nav a:hover { color: var(--text); }
 ================================================================== */
 .chat {
   display: flex; flex-direction: column;
-  gap: 1.25rem;
+  gap: 1.5rem;
   max-width: 780px;
 }
 
 .msg {
-  display: grid;
-  grid-template-columns: 80px minmax(0, 1fr);
-  gap: 1rem;
-  align-items: start;
+  display: flex;
+  flex-direction: column;
   min-width: 0;
 }
 
+.msg-user { align-items: flex-end; }
+.msg-assistant { align-items: stretch; }
+
+/* Screen-reader-only labels */
 .msg-label {
-  font-family: var(--mono);
-  font-size: 0.72rem;
-  letter-spacing: 0.2em;
-  text-transform: uppercase;
-  color: var(--text-faint);
-  padding-top: 0.75rem;
+  position: absolute;
+  width: 1px; height: 1px;
+  padding: 0; margin: -1px;
+  overflow: hidden;
+  clip: rect(0, 0, 0, 0);
+  white-space: nowrap;
+  border: 0;
 }
 
-.msg-user .msg-label { color: var(--accent); }
-.msg-assistant .msg-label { color: var(--text-dim); }
-
 .msg-body {
-  background: var(--bg-elev);
-  border: 1px solid var(--border);
-  padding: 1rem 1.25rem;
   font-size: 0.97rem;
   line-height: 1.6;
   min-width: 0;
-  overflow: hidden;
+  max-width: 100%;
 }
 
 .msg-user .msg-body {
-  border-left: 2px solid var(--accent);
+  background: var(--bg-elev);
+  border: 1px solid var(--border);
+  border-radius: 18px;
+  padding: 0.8rem 1.15rem;
+  max-width: min(75%, 560px);
+}
+
+.msg-assistant .msg-body {
+  background: transparent;
+  border: none;
+  padding: 0;
+  color: var(--text);
 }
 
 .msg-intro,
@@ -701,8 +709,7 @@ footer {
   .section { padding: 3.5rem 0; }
   .install-block pre { font-size: 0.82rem; }
   .footer-grid { flex-direction: column; gap: 1.5rem; }
-  .msg { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
-  .msg-label { padding-top: 0; }
+  .msg-user .msg-body { max-width: 88%; }
   .wizard-body { font-size: 0.76rem; }
 }
 
