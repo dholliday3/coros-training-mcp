@@ -2,6 +2,7 @@ from __future__ import annotations
 
 from typing import Any
 
+from pace_parser import parse_pace
 from workout_catalog import load_catalog_for_sport
 
 
@@ -118,6 +119,13 @@ def normalize_run_step_fields(step: dict[str, Any], *, allow_selectors: bool) ->
             normalized.setdefault(key, value)
         normalized["intensity_label"] = label
 
+    pace_input = normalized.pop("pace", None)
+    if pace_input is not None and pace_input != "":
+        pace_fields = parse_pace(pace_input)
+        for key, value in pace_fields.items():
+            # Explicit raw fields win over pace parsing if both are given.
+            normalized.setdefault(key, value)
+
     for key in (
         "target_duration_seconds",
         "target_distance_meters",
@@ -162,6 +170,7 @@ def get_run_workout_schema() -> dict[str, Any]:
         {"name": "target_value", "required": False, "description": "Raw COROS target value alternative to the friendly time/distance fields."},
         {"name": "target_display_unit", "required": False, "description": "Raw COROS target display unit."},
         {"name": "intensity_label", "required": False, "description": "Friendly run intensity label from the live Training Hub builder.", "allowed_values": list(RUN_INTENSITY_PRESETS)},
+        {"name": "pace", "required": False, "description": "Human pace string, e.g. '4:05/km', '4:05-4:15/km', '5:30/mi', '5:30-5:45/mi'. Expands to intensity_type=3 plus ms/km intensity_value / intensity_value_extend. Omitted if explicit intensity_value fields are provided."},
         {"name": "intensity_type", "required": False, "description": "Raw COROS intensity type."},
         {"name": "hr_type", "required": False, "description": "Raw COROS HR subtype used by heart-rate intensity labels."},
         {"name": "is_intensity_percent", "required": False, "description": "Whether intensity is expressed as a percent-based range."},

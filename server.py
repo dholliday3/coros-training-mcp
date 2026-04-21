@@ -27,6 +27,7 @@ from fastmcp import FastMCP
 import coros_api
 from coros_api import TOKEN_TTL_MS
 from run_workout_schema import get_run_workout_schema as build_run_workout_schema, normalize_run_step_fields
+from strength_workout_schema import get_strength_workout_schema as build_strength_workout_schema
 from workout_catalog import load_catalog_for_sport, load_workout_catalog
 
 load_dotenv()
@@ -562,9 +563,36 @@ async def get_run_workout_schema() -> dict:
     - the plain-step fields accepted by create_run_workout
     - the selector + patch fields accepted by update_run_workout
     - the checked-in live Training Hub intensity labels and their raw COROS presets
+    - the human ``pace`` input format ('4:05-4:15/km', '5:30/mi') which expands
+      into intensity_type=3 with ms/km intensity_value / intensity_value_extend
     """
     try:
         return {"schema": build_run_workout_schema()}
+    except Exception as exc:
+        return {"error": str(exc)}
+
+
+# ---------------------------------------------------------------------------
+# Tool: get_strength_workout_schema
+# ---------------------------------------------------------------------------
+
+@mcp.tool()
+async def get_strength_workout_schema() -> dict:
+    """
+    Return the strength-workout field vocabulary.
+
+    This includes:
+    - the exercise fields accepted by create_strength_workout
+    - the step_updates patch fields accepted by update_workout when the target
+      is a strength program (strength reuses the generic update_workout tool)
+    - the target_type aliases ('time', 'reps') and how to look up exercises
+      via list_exercises(sport_type=4)
+
+    Use this before authoring or editing a strength workout so the patch
+    vocabulary is explicit rather than guessed.
+    """
+    try:
+        return {"schema": build_strength_workout_schema()}
     except Exception as exc:
         return {"error": str(exc)}
 
@@ -725,6 +753,11 @@ async def update_workout(
     """
     Clone an existing workout, apply edits, and create a replacement workout.
 
+    Sport-agnostic: works for running, cycling, and strength library workouts.
+    For strength-specific field vocabulary and examples, call
+    ``get_strength_workout_schema``. For run-specific schema, use
+    ``get_run_workout_schema``.
+
     This does not mutate the original workout in place. The replacement workout
     is created in the library, and the caller can optionally delete the old
     workout afterward.
@@ -748,10 +781,10 @@ async def update_workout(
         Supported update keys:
         - name
         - overview
-        - target_type
+        - target_type (accepts 'time', 'distance', 'reps', or raw ints)
         - target_value
-        - target_distance_meters
-        - target_duration_seconds
+        - target_distance_meters  (run)
+        - target_duration_seconds  (run)
         - target_display_unit
         - intensity_type
         - intensity_value
@@ -759,7 +792,9 @@ async def update_workout(
         - intensity_display_unit
         - rest_type
         - rest_value
+        - rest_seconds  (strength-friendly alias for rest_value)
         - sets
+        - origin_id  (strength exercise swap — usually paired with name + overview)
     delete_original : bool
         Whether to delete the original workout after the replacement is created.
 
@@ -1034,12 +1069,19 @@ async def move_scheduled_workout(
     workout_id: str = "",
     plan_program_id: str = "",
     sort_no: int = 1,
+    source_happen_day: str = "",
 ) -> dict:
     """
     Move a scheduled workout to a new day.
 
-    This is implemented as schedule-new-then-remove-old so failures are biased
-    toward leaving a duplicate instead of losing the workout entirely.
+    The source-of-truth is the existing scheduled entry identified by
+    (plan_id, id_in_plan). Its embedded program is used to re-schedule on
+    ``happen_day``, which supports both library workouts AND plan-embedded
+    programs from subscribed training plans (which have no library entry).
+
+    Order of operations is schedule-new → remove-old, so a failure leaves a
+    duplicate rather than losing the workout. A pre-flight lookup verifies
+    the scheduled entry exists before anything destructive runs.
 
     Parameters
     ----------
@@ -1050,42 +1092,84 @@ async def move_scheduled_workout(
     happen_day : str
         New target date in YYYYMMDD format.
     workout_id : str
-        Library workout ID. Preferred when available.
+        Library workout ID. Optional — used only as a fallback if the
+        scheduled entry lookup doesn't return an embedded program.
     plan_program_id : str
-        Fallback program ID from the scheduled item when workout_id is not known.
+        Fallback program ID when the scheduled entry lookup doesn't provide one.
     sort_no : int
         Order within the new day if multiple workouts exist.
+    source_happen_day : str
+        Optional hint for the current day of the scheduled entry (YYYYMMDD).
+        Narrows the search window; default search spans ~6 months around today.
 
     Returns
     -------
-    dict with keys: moved, workout_id, happen_day
+    dict with keys: moved, happen_day, source_happen_day, workout_id,
+    removed_plan_id, removed_id_in_plan
     """
     auth = await _get_auth()
     if auth is None:
         return {"error": "Not authenticated. Set COROS_EMAIL and COROS_PASSWORD in .env or call authenticate_coros."}
 
-    resolved_workout_id = workout_id or plan_program_id or id_in_plan
+    # Pre-flight: locate the existing scheduled entry so we know it exists
+    # and can source the program from it when the library has no match.
     try:
-        await _run_with_auth(coros_api.fetch_workout, auth, resolved_workout_id)
+        entry = await _run_with_auth(
+            coros_api.find_scheduled_entry,
+            auth,
+            plan_id,
+            id_in_plan,
+            around_day=(source_happen_day or None),
+        )
     except Exception as exc:
         return {
-            "error": f"Unable to resolve workout for scheduled item {id_in_plan}: {exc}",
+            "error": f"Failed to look up scheduled entry: {exc}",
             "moved": False,
         }
 
+    if entry is None:
+        return {
+            "error": (
+                f"No scheduled entry found for plan_id={plan_id!r}, id_in_plan={id_in_plan!r} "
+                "in the default ~6-month search window. Run list_scheduled_workouts to confirm "
+                "the entry exists, or pass source_happen_day to widen the search center."
+            ),
+            "moved": False,
+        }
+
+    embedded_program = entry.get("program")
+    resolved_plan_program_id = entry.get("plan_program_id") or plan_program_id or id_in_plan
+    resolved_workout_id = (
+        workout_id
+        or (str(embedded_program.get("id")) if embedded_program and embedded_program.get("id") is not None else "")
+        or resolved_plan_program_id
+    )
+
     try:
-        await _run_with_auth(coros_api.schedule_workout, auth, resolved_workout_id, happen_day, sort_no)
+        await _run_with_auth(
+            coros_api.schedule_workout,
+            auth,
+            resolved_workout_id,
+            happen_day,
+            sort_no,
+            program=embedded_program,
+        )
     except Exception as exc:
         return {
             "error": f"Failed to create new scheduled entry before move: {exc}",
             "moved": False,
             "workout_id": resolved_workout_id,
             "happen_day": happen_day,
+            "source_happen_day": entry.get("happen_day", ""),
         }
 
     try:
         await _run_with_auth(
-            coros_api.remove_scheduled_workout, auth, plan_id, id_in_plan, plan_program_id or None
+            coros_api.remove_scheduled_workout,
+            auth,
+            plan_id,
+            id_in_plan,
+            resolved_plan_program_id or None,
         )
     except Exception as exc:
         return {
@@ -1096,6 +1180,7 @@ async def move_scheduled_workout(
             "moved": False,
             "workout_id": resolved_workout_id,
             "happen_day": happen_day,
+            "source_happen_day": entry.get("happen_day", ""),
             "duplicate_created": True,
         }
 
@@ -1103,6 +1188,7 @@ async def move_scheduled_workout(
         "moved": True,
         "workout_id": resolved_workout_id,
         "happen_day": happen_day,
+        "source_happen_day": entry.get("happen_day", ""),
         "removed_plan_id": plan_id,
         "removed_id_in_plan": id_in_plan,
     }
@@ -1163,7 +1249,37 @@ async def replace_scheduled_workout(
     if auth is None:
         return {"error": "Not authenticated. Set COROS_EMAIL and COROS_PASSWORD in .env or call authenticate_coros."}
 
-    source_workout_id = workout_id or plan_program_id or id_in_plan
+    # Pre-flight: locate the scheduled entry so we know it exists and can use
+    # its embedded program when the library has no match (plan-embedded case).
+    try:
+        entry = await _run_with_auth(
+            coros_api.find_scheduled_entry,
+            auth,
+            plan_id,
+            id_in_plan,
+        )
+    except Exception as exc:
+        return {
+            "error": f"Failed to look up scheduled entry: {exc}",
+            "replaced": False,
+        }
+
+    if entry is None:
+        return {
+            "error": (
+                f"No scheduled entry found for plan_id={plan_id!r}, id_in_plan={id_in_plan!r}. "
+                "Run list_scheduled_workouts to confirm the entry exists."
+            ),
+            "replaced": False,
+        }
+
+    embedded_program = entry.get("program")
+    resolved_plan_program_id = entry.get("plan_program_id") or plan_program_id or id_in_plan
+    source_workout_id = (
+        workout_id
+        or (str(embedded_program.get("id")) if embedded_program and embedded_program.get("id") is not None else "")
+        or resolved_plan_program_id
+    )
     try:
         result = await _run_with_auth(
             coros_api.clone_and_patch_workout,
@@ -1173,6 +1289,7 @@ async def replace_scheduled_workout(
             estimated_distance_meters=estimated_distance_meters,
             estimated_time_seconds=estimated_time_seconds,
             step_updates=step_updates or [],
+            source_program=embedded_program,
         )
     except Exception as exc:
         return {"error": f"Failed to build replacement workout: {exc}", "replaced": False}
@@ -1189,7 +1306,11 @@ async def replace_scheduled_workout(
 
     try:
         await _run_with_auth(
-            coros_api.remove_scheduled_workout, auth, plan_id, id_in_plan, plan_program_id or None
+            coros_api.remove_scheduled_workout,
+            auth,
+            plan_id,
+            id_in_plan,
+            resolved_plan_program_id or None,
         )
     except Exception as exc:
         return {
@@ -1205,11 +1326,20 @@ async def replace_scheduled_workout(
     deleted_original_workout = False
     warning = None
     if delete_original_workout:
-        try:
-            await _run_with_auth(coros_api.delete_workout, auth, source_workout_id)
-            deleted_original_workout = True
-        except Exception as exc:
-            warning = f"Replacement succeeded, but deleting the original workout failed: {exc}"
+        if embedded_program is not None and not workout_id:
+            # The source was a plan-embedded program, not a library workout,
+            # so there's nothing to delete from the library.
+            warning = (
+                "delete_original_workout was requested, but the source was a "
+                "plan-embedded program with no library counterpart — nothing "
+                "to delete. The old scheduled entry was already removed."
+            )
+        else:
+            try:
+                await _run_with_auth(coros_api.delete_workout, auth, source_workout_id)
+                deleted_original_workout = True
+            except Exception as exc:
+                warning = f"Replacement succeeded, but deleting the original workout failed: {exc}"
 
     return {
         "replaced": True,

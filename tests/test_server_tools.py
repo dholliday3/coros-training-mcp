@@ -82,19 +82,24 @@ async def test_move_scheduled_workout_schedules_before_removing(monkeypatch):
     async def fake_run_with_auth(fn, auth, *args, **kwargs):
         return await fn(*args, **kwargs)
 
-    async def fake_fetch_workout(workout_id):
-        calls.append(("fetch", workout_id))
-        return {"id": workout_id, "name": "Track"}
+    async def fake_find_scheduled_entry(plan_id, id_in_plan, *, around_day=None):
+        calls.append(("find", plan_id, id_in_plan, around_day))
+        return {
+            "entity": {"planId": plan_id, "idInPlan": id_in_plan, "planProgramId": "42", "happenDay": "20260423"},
+            "program": {"id": "42", "name": "Track"},
+            "plan_program_id": "42",
+            "happen_day": "20260423",
+        }
 
-    async def fake_schedule_workout(workout_id, happen_day, sort_no):
-        calls.append(("schedule", workout_id, happen_day, sort_no))
+    async def fake_schedule_workout(workout_id, happen_day, sort_no, *, program=None):
+        calls.append(("schedule", workout_id, happen_day, sort_no, program))
 
     async def fake_remove_scheduled_workout(plan_id, id_in_plan, plan_program_id=None):
         calls.append(("remove", plan_id, id_in_plan, plan_program_id))
 
     monkeypatch.setattr(server, "_get_auth", fake_get_auth)
     monkeypatch.setattr(server, "_run_with_auth", fake_run_with_auth)
-    monkeypatch.setattr(server.coros_api, "fetch_workout", fake_fetch_workout)
+    monkeypatch.setattr(server.coros_api, "find_scheduled_entry", fake_find_scheduled_entry)
     monkeypatch.setattr(server.coros_api, "schedule_workout", fake_schedule_workout)
     monkeypatch.setattr(server.coros_api, "remove_scheduled_workout", fake_remove_scheduled_workout)
 
@@ -108,15 +113,17 @@ async def test_move_scheduled_workout_schedules_before_removing(monkeypatch):
     )
 
     assert result["moved"] is True
+    assert result["source_happen_day"] == "20260423"
     assert calls == [
-        ("fetch", "42"),
-        ("schedule", "42", "20260425", 3),
+        ("find", "plan-1", "123", None),
+        ("schedule", "42", "20260425", 3, {"id": "42", "name": "Track"}),
         ("remove", "plan-1", "123", "42"),
     ]
 
 
 @pytest.mark.anyio
-async def test_move_scheduled_workout_falls_back_to_plan_program_id(monkeypatch):
+async def test_move_scheduled_workout_uses_plan_embedded_program(monkeypatch):
+    """Plan-embedded programs (no library counterpart) must be movable."""
     calls = []
 
     async def fake_get_auth():
@@ -125,38 +132,86 @@ async def test_move_scheduled_workout_falls_back_to_plan_program_id(monkeypatch)
     async def fake_run_with_auth(fn, auth, *args, **kwargs):
         return await fn(*args, **kwargs)
 
-    async def fake_fetch_workout(workout_id):
-        calls.append(("fetch", workout_id))
-        return {"id": workout_id, "name": "Track"}
+    async def fake_find_scheduled_entry(plan_id, id_in_plan, *, around_day=None):
+        calls.append(("find", plan_id, id_in_plan, around_day))
+        return {
+            "entity": {"planId": plan_id, "idInPlan": id_in_plan, "planProgramId": "5", "happenDay": "20260423"},
+            "program": {"id": "476881223711637778", "name": "S5724", "exercises": [{"name": "Planks"}]},
+            "plan_program_id": "5",
+            "happen_day": "20260423",
+        }
 
-    async def fake_schedule_workout(workout_id, happen_day, sort_no):
-        calls.append(("schedule", workout_id, happen_day, sort_no))
+    async def fake_schedule_workout(workout_id, happen_day, sort_no, *, program=None):
+        calls.append(("schedule", workout_id, happen_day, sort_no, program))
 
     async def fake_remove_scheduled_workout(plan_id, id_in_plan, plan_program_id=None):
         calls.append(("remove", plan_id, id_in_plan, plan_program_id))
 
     monkeypatch.setattr(server, "_get_auth", fake_get_auth)
     monkeypatch.setattr(server, "_run_with_auth", fake_run_with_auth)
-    monkeypatch.setattr(server.coros_api, "fetch_workout", fake_fetch_workout)
+    monkeypatch.setattr(server.coros_api, "find_scheduled_entry", fake_find_scheduled_entry)
+    monkeypatch.setattr(server.coros_api, "schedule_workout", fake_schedule_workout)
+    monkeypatch.setattr(server.coros_api, "remove_scheduled_workout", fake_remove_scheduled_workout)
+
+    # Caller passes only plan_id + id_in_plan — no workout_id — simulating
+    # the real-world scenario where the user moves a workout from a
+    # subscribed training plan.
+    result = await server.move_scheduled_workout(
+        plan_id="plan-1",
+        id_in_plan="5",
+        happen_day="20260422",
+        source_happen_day="20260423",
+    )
+
+    assert result["moved"] is True
+    assert result["workout_id"] == "476881223711637778"
+    assert calls[0] == ("find", "plan-1", "5", "20260423")
+    # Critically: schedule_workout was called with the embedded program,
+    # NOT a library workout lookup — and happened BEFORE remove.
+    schedule_call = calls[1]
+    assert schedule_call[0] == "schedule"
+    assert schedule_call[4]["name"] == "S5724"
+    assert calls[2] == ("remove", "plan-1", "5", "5")
+
+
+@pytest.mark.anyio
+async def test_move_scheduled_workout_fails_safely_when_entry_not_found(monkeypatch):
+    """If the scheduled entry doesn't exist, no destructive call must run."""
+    calls = []
+
+    async def fake_get_auth():
+        return SimpleNamespace(user_id="tester")
+
+    async def fake_run_with_auth(fn, auth, *args, **kwargs):
+        return await fn(*args, **kwargs)
+
+    async def fake_find_scheduled_entry(plan_id, id_in_plan, *, around_day=None):
+        calls.append(("find", plan_id, id_in_plan, around_day))
+        return None
+
+    async def fake_schedule_workout(*args, **kwargs):
+        calls.append(("schedule", args, kwargs))
+
+    async def fake_remove_scheduled_workout(*args, **kwargs):
+        calls.append(("remove", args, kwargs))
+
+    monkeypatch.setattr(server, "_get_auth", fake_get_auth)
+    monkeypatch.setattr(server, "_run_with_auth", fake_run_with_auth)
+    monkeypatch.setattr(server.coros_api, "find_scheduled_entry", fake_find_scheduled_entry)
     monkeypatch.setattr(server.coros_api, "schedule_workout", fake_schedule_workout)
     monkeypatch.setattr(server.coros_api, "remove_scheduled_workout", fake_remove_scheduled_workout)
 
     result = await server.move_scheduled_workout(
         plan_id="plan-1",
-        id_in_plan="123",
+        id_in_plan="nonexistent",
         happen_day="20260425",
-        workout_id="",
-        plan_program_id="77",
-        sort_no=2,
+        workout_id="hallucinated-id",
     )
 
-    assert result["moved"] is True
-    assert result["workout_id"] == "77"
-    assert calls == [
-        ("fetch", "77"),
-        ("schedule", "77", "20260425", 2),
-        ("remove", "plan-1", "123", "77"),
-    ]
+    assert result["moved"] is False
+    assert "No scheduled entry found" in result["error"]
+    # Only the lookup ran; no schedule or remove.
+    assert calls == [("find", "plan-1", "nonexistent", None)]
 
 
 @pytest.mark.anyio
@@ -209,6 +264,15 @@ async def test_replace_scheduled_workout_clones_schedules_then_removes(monkeypat
     async def fake_run_with_auth(fn, auth, *args, **kwargs):
         return await fn(*args, **kwargs)
 
+    async def fake_find_scheduled_entry(plan_id, id_in_plan, *, around_day=None):
+        calls.append(("find", plan_id, id_in_plan))
+        return {
+            "entity": {"planId": plan_id, "idInPlan": id_in_plan, "planProgramId": "42", "happenDay": "20260425"},
+            "program": {"id": "42", "name": "Tempo Run"},
+            "plan_program_id": "42",
+            "happen_day": "20260425",
+        }
+
     async def fake_clone_and_patch_workout(workout_id, **kwargs):
         calls.append(("clone", workout_id, kwargs))
         return {
@@ -217,7 +281,7 @@ async def test_replace_scheduled_workout_clones_schedules_then_removes(monkeypat
             "workout": {"id": "99", "name": "Updated Scheduled Run"},
         }
 
-    async def fake_schedule_workout(workout_id, happen_day, sort_no):
+    async def fake_schedule_workout(workout_id, happen_day, sort_no, *, program=None):
         calls.append(("schedule", workout_id, happen_day, sort_no))
 
     async def fake_remove_scheduled_workout(plan_id, id_in_plan, plan_program_id=None):
@@ -225,6 +289,7 @@ async def test_replace_scheduled_workout_clones_schedules_then_removes(monkeypat
 
     monkeypatch.setattr(server, "_get_auth", fake_get_auth)
     monkeypatch.setattr(server, "_run_with_auth", fake_run_with_auth)
+    monkeypatch.setattr(server.coros_api, "find_scheduled_entry", fake_find_scheduled_entry)
     monkeypatch.setattr(server.coros_api, "clone_and_patch_workout", fake_clone_and_patch_workout)
     monkeypatch.setattr(server.coros_api, "schedule_workout", fake_schedule_workout)
     monkeypatch.setattr(server.coros_api, "remove_scheduled_workout", fake_remove_scheduled_workout)
@@ -242,11 +307,13 @@ async def test_replace_scheduled_workout_clones_schedules_then_removes(monkeypat
     assert result["replaced"] is True
     assert result["new_workout_id"] == "99"
     assert calls == [
+        ("find", "plan-1", "123"),
         ("clone", "42", {
             "name": None,
             "estimated_distance_meters": None,
             "estimated_time_seconds": None,
             "step_updates": [{"step_index": 0, "target_distance_meters": 5000}],
+            "source_program": {"id": "42", "name": "Tempo Run"},
         }),
         ("schedule", "99", "20260428", 2),
         ("remove", "plan-1", "123", "42"),

@@ -137,17 +137,42 @@ def cmd_serve() -> int:
     return 0
 
 
+def cmd_setup() -> int:
+    """Interactive wizard: credentials + keyring + assistant install + smoke test."""
+    reconfigure = "--reconfigure" in sys.argv[2:] or "--reconfigure-credentials" in sys.argv[2:]
+    from installer.wizard import run_setup
+
+    return run_setup(reconfigure_credentials=reconfigure)
+
+
+def cmd_uninstall() -> int:
+    """Remove the coros MCP entry from detected assistants, optionally clear keyring."""
+    from installer.wizard import run_uninstall
+
+    return run_uninstall()
+
+
 def cmd_help() -> int:
     print(
         """Coros MCP Server — CLI
 
-Usage:
-  coros-mcp serve         Start the MCP server (used by Claude Code)
+First-time setup:
+  coros-mcp setup         Interactive wizard — credentials + install into assistants
+
+Daily use:
+  coros-mcp serve         Start the MCP server (used by MCP clients)
+  coros-mcp auth-status   Check status of stored tokens
+
+Lifecycle:
+  coros-mcp setup --reconfigure   Re-run wizard (change creds or add assistants)
+  coros-mcp uninstall             Remove from assistants, optionally clear creds
+
+Low-level auth (usually not needed after setup):
   coros-mcp auth          Authenticate with your Coros account (web + mobile)
   coros-mcp auth-web      Authenticate web API only (no sleep data)
   coros-mcp auth-mobile   Authenticate mobile API only (sleep data)
-  coros-mcp auth-status   Check status of both tokens
   coros-mcp auth-clear    Remove stored token
+
   coros-mcp help          Show this help message
 """
     )
@@ -158,6 +183,8 @@ def main() -> None:
     command = sys.argv[1] if len(sys.argv) > 1 else "help"
     commands = {
         "serve": cmd_serve,
+        "setup": cmd_setup,
+        "uninstall": cmd_uninstall,
         "auth": cmd_auth,
         "auth-web": cmd_auth_web,
         "auth-mobile": cmd_auth_mobile,

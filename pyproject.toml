@@ -1,8 +1,25 @@
 [project]
-name = "coros-mcp"
-version = "0.1"
-description = "MCP server for Coros sleep and HRV data"
+name = "coros-training-mcp"
+version = "0.2.0"
+description = "Model Context Protocol server for Coros with first-class running workout authoring, scheduling, and editing on top of training data, sleep, HRV, and activity exports."
+readme = "README.md"
 requires-python = ">=3.11"
+license = { text = "MIT" }
+authors = [{ name = "Daniel Holliday" }]
+keywords = ["coros", "mcp", "running", "training", "workout", "fitness", "hrv", "sleep"]
+classifiers = [
+    "Development Status :: 4 - Beta",
+    "Intended Audience :: End Users/Desktop",
+    "License :: OSI Approved :: MIT License",
+    "Operating System :: MacOS",
+    "Operating System :: POSIX :: Linux",
+    "Operating System :: Microsoft :: Windows",
+    "Programming Language :: Python :: 3",
+    "Programming Language :: Python :: 3.11",
+    "Programming Language :: Python :: 3.12",
+    "Programming Language :: Python :: 3.13",
+    "Topic :: Scientific/Engineering",
+]
 dependencies = [
     "cryptography",
     "pycryptodome>=3.0",
@@ -11,6 +28,7 @@ dependencies = [
     "keyring",
     "pydantic>=2.0",
     "python-dotenv>=1.0",
+    "questionary>=2.0",
 ]
 
 [project.optional-dependencies]
@@ -19,6 +37,10 @@ dev = [
     "pytest>=8.0",
 ]
 
+[project.urls]
+Homepage = "https://github.com/dholliday3/coros-training-mcp"
+Issues = "https://github.com/dholliday3/coros-training-mcp/issues"
+
 [build-system]
 requires = ["hatchling"]
 build-backend = "hatchling.build"
@@ -26,9 +48,46 @@ build-backend = "hatchling.build"
 [project.scripts]
 coros-mcp = "cli:main"
 
+# Flat-layout wheel: include every runtime Python module at the project root,
+# the auth + installer packages, and the live-builder enum JSON the workout
+# catalog loads at runtime. Explicitly NOT shipped: tests/, .venv/, docs/*.md,
+# the Keychain wrapper script, Playwright browsers.
 [tool.hatch.build.targets.wheel]
-packages = ["."]
-include = ["*.py", "auth/*.py"]
+include = [
+    "cli.py",
+    "server.py",
+    "coros_api.py",
+    "models.py",
+    "pace_parser.py",
+    "run_workout_schema.py",
+    "strength_workout_schema.py",
+    "workout_catalog.py",
+    "traininghub_live_builder_catalog.py",
+    "traininghub_static_enums.py",
+    "auth/**/*.py",
+    "installer/**/*.py",
+    "docs/enums/*.json",
+]
+
+[tool.hatch.build.targets.sdist]
+include = [
+    "/cli.py",
+    "/server.py",
+    "/coros_api.py",
+    "/models.py",
+    "/pace_parser.py",
+    "/run_workout_schema.py",
+    "/strength_workout_schema.py",
+    "/workout_catalog.py",
+    "/traininghub_live_builder_catalog.py",
+    "/traininghub_static_enums.py",
+    "/auth",
+    "/installer",
+    "/docs/enums",
+    "/README.md",
+    "/LICENSE",
+    "/pyproject.toml",
+]
 
 [tool.pytest.ini_options]
 testpaths = ["tests"]

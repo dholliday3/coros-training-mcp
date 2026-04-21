@@ -88,68 +88,84 @@ See [docs/workout-taxonomy.md](./docs/workout-taxonomy.md) for full detail, and 
 
 ## Setup
 
-Requires Python ≥ 3.11 and a COROS Training Hub account.
+Two commands — install and run the wizard:
 
-### 1. Install
+```bash
+uv tool install coros-training-mcp
+coros-mcp setup
+```
+
+(`pipx install coros-training-mcp` also works if you don't have `uv`.)
+
+The wizard asks for email, password, and region, verifies the credentials against the COROS API, stores them in your system keyring, detects which AI assistants you have installed (Claude Code, Claude Desktop, Codex CLI, Cursor), lets you pick which to install into, writes the MCP config for each picked one (preserving any other MCP entries you already have), and runs a post-install smoke test to confirm the server boots.
+
+### Lifecycle
+
+```bash
+coros-mcp setup                 # first-time setup
+coros-mcp setup --reconfigure   # change credentials or add more assistants
+coros-mcp uninstall             # remove from assistants, optionally clear keyring
+coros-mcp auth-status           # check stored tokens
+```
+
+To upgrade: `uv tool upgrade coros-training-mcp` (or `pipx upgrade coros-training-mcp`).
+
+### Requirements
+
+- Python ≥ 3.11 (fetched automatically by `uv tool install`; already present on most systems otherwise)
+- A COROS Training Hub account
+- One of: Claude Code, Claude Desktop, Codex CLI, or Cursor (others can still use the server manually — see "Manual setup" below)
+
+### What gets stored and where
+
+- **Credentials**: system keyring (macOS Keychain / Windows Credential Manager / freedesktop Secret Service). If the keyring is unavailable (headless Linux, some VMs), the wizard falls back to an encrypted local file at `~/.coros-mcp/credentials.enc` and tells you.
+- **Assistant config entries**: live in each assistant's own config file — we only ever add/replace a `coros` entry; we never touch other MCP entries.
+- **The `coros-mcp` binary** itself: in the `uv tool` / `pipx` isolated venv, at an absolute path that MCP clients pin to.
+
+### Manual setup (advanced)
+
+If you're on a system none of the supported assistants run on, or you want full control, you can still run the server directly:
+
+```bash
+uv tool install coros-training-mcp
+coros-mcp auth     # one-time interactive login, stores tokens in keyring
+```
+
+Then point any MCP client at the binary:
+
+```json
+{ "mcpServers": { "coros": { "command": "/absolute/path/to/coros-mcp", "args": ["serve"] } } }
+```
+
+Find the absolute path with `which coros-mcp`.
+
+### Developer setup
+
+For hacking on the code:
 
 ```bash
 git clone https://github.com/dholliday3/coros-training-mcp.git
 cd coros-training-mcp
-python3 -m venv .venv && source .venv/bin/activate   # Windows: .venv\Scripts\activate
-pip install -e .                                     # or: uv pip install -e .
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .[dev]
+pytest
 ```
 
-### 2. Configure credentials
-
-**macOS (recommended): Keychain + wrapper script.** No plaintext credentials in MCP config, auto-loaded at process start.
+### CLI reference
 
 ```bash
-security add-generic-password -U -a "$USER" -s "coros-mcp-email"    -w "you@example.com"
-security add-generic-password -U -a "$USER" -s "coros-mcp-password" -w "your-password"
-./run-coros-mcp.zsh auth-status    # verify
+coros-mcp setup                 # first-time interactive setup
+coros-mcp setup --reconfigure   # re-run wizard
+coros-mcp uninstall             # remove from assistants
+coros-mcp serve                 # start the MCP server (what MCP clients run)
+coros-mcp auth                  # low-level: re-authenticate (web + mobile)
+coros-mcp auth-web              # low-level: web token only (sleep data lazy-loads)
+coros-mcp auth-mobile           # low-level: mobile token only
+coros-mcp auth-status           # check stored tokens
+coros-mcp auth-clear            # remove stored tokens
 ```
 
-**Linux / Windows / anywhere else: `.env` file** in your project directory (or equivalent MCP-scoped env vars):
-
-```
-COROS_EMAIL=you@example.com
-COROS_PASSWORD=yourpassword
-COROS_REGION=eu    # or us, asia
-```
-
-The server authenticates on the first request and refreshes tokens transparently. Tokens are stored in your system keyring (or an encrypted local file fallback), never transmitted anywhere except to COROS.
-
-### 3. Register with your MCP client
-
-```bash
-# macOS + wrapper (recommended):
-claude mcp add coros -- /path/to/coros-training-mcp/run-coros-mcp.zsh
-
-# Raw binary (any platform):
-claude mcp add coros -- /path/to/coros-training-mcp/.venv/bin/coros-mcp serve
-
-# Scope to one project only:
-claude mcp add --scope project coros -- /path/to/coros-training-mcp/run-coros-mcp.zsh
-```
-
-Swap `claude mcp add` for `codex mcp add` if you're on Codex. For Claude Desktop, add to `~/Library/Application Support/Claude/claude_desktop_config.json`:
-
-```json
-{ "mcpServers": { "coros": { "command": "/path/to/coros-training-mcp/run-coros-mcp.zsh" } } }
-```
-
-### CLI commands
-
-```bash
-coros-mcp serve         # start the MCP server (used by MCP clients)
-coros-mcp auth          # interactive login — stores web + mobile tokens
-coros-mcp auth-web      # web token only (skips mobile login; sleep data lazy-loads)
-coros-mcp auth-mobile   # mobile token only (used for sleep data)
-coros-mcp auth-status   # check authentication state
-coros-mcp auth-clear    # remove stored tokens
-```
-
-> The mobile login (`apieu.coros.com`) logs you out of the COROS mobile app on your phone. Use `auth-web` to avoid this — the mobile token is obtained automatically on the first sleep-data request.
+> The mobile login logs you out of the COROS mobile app on your phone. Use `auth-web` (or let the wizard's default skip-mobile choice stand) to avoid this — the mobile token is fetched lazily on the first sleep-data request.
 
 ---
 

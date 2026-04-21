@@ -706,6 +706,13 @@ RUN_TARGET_TYPE_ALIASES = {
     "time": 2,
     "distance": 5,
 }
+# Accepted at the generic patch layer — strength workouts use reps (3) in
+# addition to the run-only {time, distance} pair.
+STEP_TARGET_TYPE_ALIASES = {
+    "time": 2,
+    "distance": 5,
+    "reps": 3,
+}
 
 
 def _parse_workout(item: dict) -> dict:
@@ -914,9 +921,13 @@ def _apply_step_updates(workout: dict, step_updates: list[dict]) -> None:
             target_type = patch["target_type"]
             if isinstance(target_type, str):
                 normalized_target = target_type.strip().lower()
-                if normalized_target not in RUN_TARGET_TYPE_ALIASES:
-                    raise ValueError(f"Unsupported run target_type: {target_type!r}")
-                ex["targetType"] = RUN_TARGET_TYPE_ALIASES[normalized_target]
+                if normalized_target not in STEP_TARGET_TYPE_ALIASES:
+                    raise ValueError(
+                        f"Unsupported target_type: {target_type!r}. "
+                        f"Accepted string aliases: {sorted(STEP_TARGET_TYPE_ALIASES)}. "
+                        "Raw int values from the COROS enum are also accepted."
+                    )
+                ex["targetType"] = STEP_TARGET_TYPE_ALIASES[normalized_target]
             else:
                 ex["targetType"] = target_type
         if "target_value" in patch:
@@ -949,8 +960,16 @@ def _apply_step_updates(workout: dict, step_updates: list[dict]) -> None:
             ex["restType"] = patch["rest_type"]
         if "rest_value" in patch:
             ex["restValue"] = int(patch["rest_value"])
+        if "rest_seconds" in patch:
+            # Strength-friendly alias for rest_value.
+            ex["restValue"] = int(patch["rest_seconds"])
         if "sets" in patch:
             ex["sets"] = int(patch["sets"])
+        if "origin_id" in patch:
+            # Swap to a different catalog exercise (strength). The overview /
+            # name fields should usually be updated alongside so the UI label
+            # matches the new exercise.
+            ex["originId"] = str(patch["origin_id"])
 
     _recalculate_workout_summary(workout)
 
@@ -1156,11 +1175,20 @@ async def clone_and_patch_workout(
     estimated_distance_meters: Optional[float] = None,
     estimated_time_seconds: Optional[int] = None,
     step_updates: Optional[list[dict]] = None,
+    source_program: Optional[dict] = None,
 ) -> dict:
-    """Clone a workout, apply patches, create a replacement, and return both IDs."""
-    raw = await _fetch_raw_workout(auth, workout_id)
-    if raw is None:
-        raise ValueError(f"Workout {workout_id} not found.")
+    """Clone a workout, apply patches, create a replacement, and return both IDs.
+
+    If ``source_program`` is provided it is used as the clone source — this
+    supports plan-embedded programs that have no library counterpart.
+    Otherwise the library is queried by ``workout_id``.
+    """
+    if source_program is not None:
+        raw = copy.deepcopy(source_program)
+    else:
+        raw = await _fetch_raw_workout(auth, workout_id)
+        if raw is None:
+            raise ValueError(f"Workout {workout_id} not found.")
 
     patched = copy.deepcopy(raw)
     _apply_top_level_workout_patch(
@@ -1496,6 +1524,74 @@ async def fetch_scheduled_workouts(
     return _normalize_scheduled_workouts(data)
 
 
+async def find_scheduled_entry(
+    auth: StoredAuth,
+    plan_id: str,
+    id_in_plan: str,
+    *,
+    around_day: Optional[str] = None,
+    window_days: int = 365,
+) -> Optional[dict]:
+    """
+    Locate a scheduled entry by (plan_id, id_in_plan) anywhere in the
+    user's schedule within a search window.
+
+    Unlike the library workout lookup, this searches scheduled entries —
+    so it works for plan-embedded programs that have no library counterpart.
+
+    Returns a dict with keys:
+      - entity: the raw schedule entity (with happenDay, planProgramId, etc.)
+      - program: the raw program dict embedded in the plan (or None if the
+        schedule response didn't include a matching program)
+      - plan_program_id: the entity's planProgramId (string)
+      - happen_day: the entity's current happenDay (string)
+
+    Returns None if no matching entry is found in the window.
+    """
+    import datetime
+
+    if around_day:
+        try:
+            center = datetime.datetime.strptime(around_day, "%Y%m%d").date()
+        except ValueError:
+            center = datetime.date.today()
+    else:
+        center = datetime.date.today()
+
+    half = max(window_days, 30) // 2
+    start = (center - datetime.timedelta(days=half)).strftime("%Y%m%d")
+    end = (center + datetime.timedelta(days=half)).strftime("%Y%m%d")
+
+    data = await fetch_schedule_raw(auth, start, end)
+    entities = data.get("entities") or []
+    programs = data.get("programs") or []
+
+    programs_by_id_in_plan = {
+        str(p.get("idInPlan")): p for p in programs if p.get("idInPlan") is not None
+    }
+    programs_by_id = {
+        str(p.get("id")): p for p in programs if p.get("id") is not None
+    }
+
+    for entity in entities:
+        if str(entity.get("planId", "")) != str(plan_id):
+            continue
+        if str(entity.get("idInPlan", "")) != str(id_in_plan):
+            continue
+        plan_program_id = str(entity.get("planProgramId", "") or "")
+        program = (
+            programs_by_id_in_plan.get(str(id_in_plan))
+            or (programs_by_id.get(plan_program_id) if plan_program_id else None)
+        )
+        return {
+            "entity": entity,
+            "program": program,
+            "plan_program_id": plan_program_id,
+            "happen_day": str(entity.get("happenDay", "")),
+        }
+    return None
+
+
 async def create_strength_workout(
     auth: StoredAuth,
     name: str,
@@ -1645,17 +1741,25 @@ async def schedule_workout(
     workout_id: str,
     happen_day: str,
     sort_no: int = 1,
+    *,
+    program: Optional[dict] = None,
 ) -> None:
     """
     Add an existing workout to the Coros training calendar.
 
     happen_day: YYYYMMDD string.
     sort_no: order within the day (1 = first workout).
+    program: pre-resolved raw program dict. When provided, skips the library
+        lookup — use this to schedule plan-embedded programs that have no
+        library counterpart (e.g. workouts from a subscribed training plan).
     """
-    # Get raw workout object
-    program = await _fetch_raw_workout(auth, workout_id)
     if program is None:
-        raise ValueError(f"Workout {workout_id} not found in library.")
+        program = await _fetch_raw_workout(auth, workout_id)
+        if program is None:
+            raise ValueError(f"Workout {workout_id} not found in library.")
+    else:
+        # Don't mutate caller's dict.
+        program = copy.deepcopy(program)
 
     # Fetch schedule to get maxIdInPlan (raw, not stripped)
     params = {
