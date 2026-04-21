@@ -1,179 +1,105 @@
 # coros-training-mcp
 
-A [Model Context Protocol (MCP)](https://modelcontextprotocol.io/) server for COROS with **first-class running workout authoring and editing** — pace-based intervals, distance targets, repeat groups, and clone-and-swap edits of scheduled runs — on top of the standard COROS training data, scheduling, strength, and activity export tools.
+**Running-first [MCP](https://modelcontextprotocol.io/) server for COROS.** Author, edit, and schedule running workouts — pace-based intervals, distance targets, repeat groups, clone-and-swap edits — plus sleep, HRV, training load, and activity exports.
 
-This project is built on top of [cygnusb/coros-mcp](https://github.com/cygnusb/coros-mcp) and keeps that repository as an upstream reference.
+Runs locally as a stdio subprocess of your AI assistant. No API key required, no public endpoint. Credentials live in your OS keyring; traffic is outbound only, directly to COROS.
 
-### Why this fork
+Landing page & screenshots: <https://dholliday3.github.io/coros-training-mcp/>
 
-Upstream is a solid read-oriented COROS MCP, but its authoring story is shaped around time-and-power workouts (cycling, strength). This fork is the one to pick when an agent needs to **build or edit running workouts** end-to-end:
-
-- **Sport-specific run tools** — `create_run_workout` and `update_run_workout` speak distance/pace/HR targets natively, not just duration/power.
-- **Shared run-step schema** — `get_run_workout_schema` exposes the exact contract so agents don't guess which fields are valid on create vs. update.
-- **Clone-and-swap edits** — change a scheduled run's distance, pace band, or rep count without destroying the calendar entry.
-- **Live builder catalog** — enum values (step kinds, target types, intensity types) are extracted from the Training Hub builder itself, not hand-maintained.
-- **Workout taxonomy docs** — explicit disambiguation of library workouts, scheduled entries, and plan containers, so agents stop confusing `list_workouts` with the calendar.
-- **Broader automated test suite** covering the running-edit paths.
-
-**No API key required.** This server authenticates directly with your Coros Training Hub credentials. Your token is stored securely in your system keyring (or an encrypted local file as fallback), never transmitted anywhere except to Coros.
-
-For the distinction between library workouts, scheduled calendar entries, and plan containers, see [docs/workout-taxonomy.md](./docs/workout-taxonomy.md).
-
-## What You Can Do
-
-Ask your AI assistant questions like:
-
-**Running workouts (the fork's focus):**
-
-- "Create a 5×1km threshold workout at 4:05–4:15/km with 2-minute jog recovery"
-- "Change my Tuesday VO2 workout to 6 reps instead of 5"
-- "Build a 90-minute long run with 4×8min at marathon pace in the middle"
-- "Move Thursday's tempo run to Friday"
-- "Replace my scheduled Sunday long run with a 16km progression at easy→steady pace"
-
-**Training data & recovery:**
-
-- "How much deep sleep and REM did I get last week?"
-- "What was my HRV trend over the last 4 weeks?"
-- "Show me my resting heart rate and training load for last week"
-- "How many steps did I average per day this month?"
-
-**Activities, calendar, and other sports:**
-
-- "List my rides from last month"
-- "Show me the details of my last long ride"
-- "Create a 90-minute sweet spot workout for me"
-- "What's on my training calendar next week?"
-- "Schedule my VO2 workout for Thursday"
-- "Create a 20-minute strength circuit with squats, lunges, and planks"
-
-## Features
-
-| Tool | Description |
-|------|-------------|
-| `authenticate_coros` | Log in with email and password — token stored securely in keyring |
-| `authenticate_coros_mobile` | Log in to the mobile API only (useful for sleep data troubleshooting) |
-| `check_coros_auth` | Check whether a valid auth token is present |
-| `get_daily_metrics` | Fetch daily metrics (HRV, resting HR, training load, VO2max, stamina, and more) for n weeks (default: 4) |
-| `get_sleep_data` | Fetch nightly sleep stages (deep, light, REM, awake) and sleep HR for n weeks (default: 4) |
-| `list_activities` | List activities for a date range with summary metrics |
-| `get_activity_detail` | Fetch full detail for a single activity (laps, HR zones, power zones) |
-| `export_activity_file` | Export a completed activity file in GPX, FIT, TCX, KML, or CSV and save it locally |
-| `list_workouts` | List all saved structured workout programs |
-| `get_workout_builder_catalog` | Return the checked-in enum registry and live builder catalog for workout construction |
-| `get_run_workout_schema` | Return the shared run-step schema used by both `create_run_workout` and `update_run_workout` |
-| `create_run_workout` | Create a running workout with explicit run-step kinds and run targets |
-| `update_run_workout` | Clone and edit a running workout using run-specific step updates |
-| `create_workout` | Create a new structured workout with named steps and power targets |
-| `delete_workout` | Delete a workout program from the library |
-| `list_planned_activities` | List planned workouts from the Coros training calendar |
-| `schedule_workout` | Schedule an existing workout on a calendar day |
-| `remove_scheduled_workout` | Remove a scheduled workout from the calendar |
-| `create_strength_workout` | Create a structured strength workout with sets, reps, or timed exercises |
-| `list_exercises` | Browse the Coros exercise catalogue, especially for strength workouts |
-
-## Workout Taxonomy
-
-Three distinct objects, often confused:
-
-- **library workout** — reusable program in your account. Queried by `list_workouts`.
-- **scheduled entry** — a calendar occurrence of a library workout on a specific day. Queried by `list_planned_activities`. May have different IDs than its source workout.
-- **plan container** — the higher-level COROS schedule/plan that owns scheduled entries.
-
-GPX/FIT/TCX/KML export applies to completed activities only — structured library workouts use a separate share flow in the app. The MCP writes to COROS server state; device sync is still handled by the COROS app/watch.
-
-See [docs/workout-taxonomy.md](./docs/workout-taxonomy.md) for full detail, and [docs/enum-extraction.md](./docs/enum-extraction.md) for how enum values are discovered from the live Training Hub builder.
-
----
-
-## Setup
-
-Two commands — install and run the wizard:
+## Install
 
 ```bash
 uv tool install coros-training-mcp
 coros-mcp setup
 ```
 
-(`pipx install coros-training-mcp` also works if you don't have `uv`.)
+(`pipx install coros-training-mcp` works too.) The wizard asks for your COROS email, password, and region, verifies them against the API, stores them in your system keyring, detects which AI assistants you have installed (Claude Code, Claude Desktop, Codex CLI, Cursor), writes the MCP entry for each one you pick (preserving any existing entries), and runs a smoke test.
 
-The wizard asks for email, password, and region, verifies the credentials against the COROS API, stores them in your system keyring, detects which AI assistants you have installed (Claude Code, Claude Desktop, Codex CLI, Cursor), lets you pick which to install into, writes the MCP config for each picked one (preserving any other MCP entries you already have), and runs a post-install smoke test to confirm the server boots.
+**Requirements:** Python ≥ 3.11 (`uv tool install` fetches it automatically), a COROS Training Hub account, macOS / Linux / Windows.
 
-### Lifecycle
+**Lifecycle:**
 
 ```bash
-coros-mcp setup                 # first-time setup
 coros-mcp setup --reconfigure   # change credentials or add more assistants
 coros-mcp uninstall             # remove from assistants, optionally clear keyring
 coros-mcp auth-status           # check stored tokens
+uv tool upgrade coros-training-mcp
 ```
 
-To upgrade: `uv tool upgrade coros-training-mcp` (or `pipx upgrade coros-training-mcp`).
+## What you can ask
 
-### Requirements
+**Running workouts** (the focus):
 
-- Python ≥ 3.11 (fetched automatically by `uv tool install`; already present on most systems otherwise)
-- A COROS Training Hub account
-- One of: Claude Code, Claude Desktop, Codex CLI, or Cursor (others can still use the server manually — see "Manual setup" below)
+- "Create a 5×1km threshold workout at 4:05–4:15/km with 2-minute jog recovery"
+- "Change my Tuesday VO2 workout to 6 reps instead of 5"
+- "Build a 90-minute long run with 4×8min at marathon pace in the middle"
+- "Move Thursday's tempo run to Friday"
+- "Replace my scheduled Sunday long run with a 16km progression at easy→steady"
 
-### What gets stored and where
+**Recovery & training data:**
 
-- **Credentials**: system keyring (macOS Keychain / Windows Credential Manager / freedesktop Secret Service). If the keyring is unavailable (headless Linux, some VMs), the wizard falls back to an encrypted local file at `~/.coros-mcp/credentials.enc` and tells you.
-- **Assistant config entries**: live in each assistant's own config file — we only ever add/replace a `coros` entry; we never touch other MCP entries.
-- **The `coros-mcp` binary** itself: in the `uv tool` / `pipx` isolated venv, at an absolute path that MCP clients pin to.
+- "How much deep sleep and REM did I get last week?"
+- "What was my HRV trend over the last 4 weeks?"
+- "Show me resting HR and training load for last week"
 
-### Manual setup (advanced)
+**Activities, schedule, and other sports:**
 
-If you're on a system none of the supported assistants run on, or you want full control, you can still run the server directly:
+- "List my rides from last month"
+- "Export my Saturday long run to GPX"
+- "What's on my training calendar next week?"
+- "Create a 90-minute sweet spot workout"
+- "Create a 20-minute strength circuit with squats, lunges, and planks"
 
-```bash
-uv tool install coros-training-mcp
-coros-mcp auth     # one-time interactive login, stores tokens in keyring
-```
+## Tools
 
-Then point any MCP client at the binary:
+| Tool | Description |
+|------|-------------|
+| `create_run_workout` | Create a run with pace/HR/distance targets, repeat groups |
+| `update_run_workout` | Clone-and-edit a running workout using run-specific step patches |
+| `get_run_workout_schema` | Shared run-step schema used by create + update |
+| `create_strength_workout` | Build a strength circuit from the COROS exercise catalog |
+| `get_strength_workout_schema` | Strength-step schema (reps, time, rest, exercise swap) |
+| `update_workout` | Generic clone-and-patch primitive (strength & cycling) |
+| `create_workout` | Generic time-and-power builder (cycling) |
+| `list_workouts` / `get_workout` / `delete_workout` | Manage the library |
+| `list_scheduled_workouts` / `schedule_workout` | Calendar read & add |
+| `move_scheduled_workout` | Move a scheduled entry to another day |
+| `replace_scheduled_workout` | Swap a scheduled entry for a different workout |
+| `remove_scheduled_workout` | Remove a scheduled entry |
+| `get_daily_metrics` | HRV, resting HR, training load, VO₂max, stamina (n weeks) |
+| `get_sleep_data` | Deep / light / REM / awake minutes, sleep HR (n weeks) |
+| `list_activities` / `get_activity_detail` | Completed activity listing + detail |
+| `export_activity_file` | Download a completed activity as GPX / FIT / TCX / KML / CSV |
+| `list_exercises` | Browse the COROS exercise catalog |
+| `get_workout_builder_catalog` | Live-extracted enum registry for workout authoring |
+| `authenticate_coros` / `check_coros_auth` | Explicit login & status (usually automatic) |
 
-```json
-{ "mcpServers": { "coros": { "command": "/absolute/path/to/coros-mcp", "args": ["serve"] } } }
-```
+### Workout taxonomy
 
-Find the absolute path with `which coros-mcp`.
+Three distinct objects that are easy to confuse:
 
-### Developer setup
+- **Library workout** — reusable program in your account. Queried by `list_workouts`.
+- **Scheduled entry** — calendar occurrence of a workout on a specific day. Queried by `list_scheduled_workouts`. Has different IDs than its source workout.
+- **Plan container** — higher-level training plan that owns scheduled entries.
 
-For hacking on the code:
+Full detail: [docs/workout-taxonomy.md](./docs/workout-taxonomy.md). Enum-extraction mechanics: [docs/enum-extraction.md](./docs/enum-extraction.md).
 
-```bash
-git clone https://github.com/dholliday3/coros-training-mcp.git
-cd coros-training-mcp
-python3 -m venv .venv && source .venv/bin/activate
-pip install -e .[dev]
-pytest
-```
+Export (GPX / FIT / TCX / KML / CSV) applies to completed activities only — structured library workouts use a separate share flow in the COROS app. The MCP writes to COROS server state; device sync is still handled by the app/watch.
 
-### CLI reference
+## Privacy & data handling
 
-```bash
-coros-mcp setup                 # first-time interactive setup
-coros-mcp setup --reconfigure   # re-run wizard
-coros-mcp uninstall             # remove from assistants
-coros-mcp serve                 # start the MCP server (what MCP clients run)
-coros-mcp auth                  # low-level: re-authenticate (web + mobile)
-coros-mcp auth-web              # low-level: web token only (sleep data lazy-loads)
-coros-mcp auth-mobile           # low-level: mobile token only
-coros-mcp auth-status           # check stored tokens
-coros-mcp auth-clear            # remove stored tokens
-```
-
-> The mobile login logs you out of the COROS mobile app on your phone. Use `auth-web` (or let the wizard's default skip-mobile choice stand) to avoid this — the mobile token is fetched lazily on the first sleep-data request.
+- **Credentials**: system keyring (macOS Keychain / Windows Credential Manager / freedesktop Secret Service). If the keyring is unavailable (headless Linux, some VMs), the wizard falls back to an AES-encrypted file at `~/.coros-mcp/credentials.enc` and tells you.
+- **Assistant config entries**: live in each assistant's own config file. Only a `coros` entry is added or replaced; other MCP entries are never touched.
+- **Network**: outbound TLS only, directly to `teamapi.coros.com` / `teameuapi.coros.com` / `apieu.coros.com`. No telemetry, no analytics, no third-party services.
+- **Binary**: `coros-mcp` lives in the `uv tool` / `pipx` isolated venv at an absolute path that MCP clients pin to.
 
 ---
 
-## Tool Reference
+## Tool reference
 
 ### Auth — `authenticate_coros`, `authenticate_coros_mobile`, `check_coros_auth`
 
-You normally don't call these directly — credentials from Keychain or `.env` are picked up automatically. They exist for explicit login/reauth (`{ "email", "password", "region" }`) and status checks (`check_coros_auth` returns `authenticated`, `expires_in_hours`, `mobile_authenticated`, `mobile_token_status`). `authenticate_coros_mobile` is useful for restoring sleep-data access without redoing web auth.
+You normally don't call these directly — credentials from the keyring or `.env` are picked up automatically. They exist for explicit login/reauth (`{ "email", "password", "region" }`) and status checks (`check_coros_auth` returns `authenticated`, `expires_in_hours`, `mobile_authenticated`, `mobile_token_status`). `authenticate_coros_mobile` is useful for restoring sleep-data access without redoing web auth.
 
 ### `get_daily_metrics`
 
@@ -183,9 +109,7 @@ Fetch daily metrics for a configurable number of weeks (default: 4).
 { "weeks": 4 }
 ```
 
-Returns: `records` (list), `count`, `date_range`
-
-Each record includes:
+Returns: `records` (list), `count`, `date_range`. Each record includes:
 
 | Field | Source | Description |
 |-------|--------|-------------|
@@ -212,53 +136,27 @@ Fetch nightly sleep stage data for a configurable number of weeks (default: 4).
 { "weeks": 4 }
 ```
 
-Returns: `records` (list), `count`, `date_range`
+Returns: `records`, `count`, `date_range`. Each record includes `date`, `total_duration_minutes`, `phases.{deep,light,rem,awake,nap}_minutes`, `avg_hr`, `min_hr`, `max_hr`, `quality_score`.
 
-Each record includes:
-
-| Field | Description |
-|-------|-------------|
-| `date` | Date (YYYYMMDD) — the morning after the sleep |
-| `total_duration_minutes` | Total sleep in minutes |
-| `phases.deep_minutes` | Deep sleep |
-| `phases.light_minutes` | Light sleep |
-| `phases.rem_minutes` | REM sleep |
-| `phases.awake_minutes` | Time awake during the night |
-| `phases.nap_minutes` | Daytime nap time (null if none) |
-| `avg_hr` | Average heart rate during sleep |
-| `min_hr` | Minimum heart rate during sleep |
-| `max_hr` | Maximum heart rate during sleep |
-| `quality_score` | Sleep quality score (null if not computed) |
-
-> **Note:** Sleep data is fetched from the Coros mobile API (`apieu.coros.com`), which uses a separate token from the Training Hub web API. `coros-mcp auth` obtains both tokens, but doing so logs you out of the Coros mobile app. Use `coros-mcp auth-web` to skip mobile login — the mobile token is then obtained automatically on the first sleep data request. The token expires after ~1 hour but **refreshes automatically** on subsequent requests.
+> Sleep data is fetched from the COROS mobile API (`apieu.coros.com`), which uses a separate token from the Training Hub web API. `coros-mcp auth` obtains both, but doing so logs you out of the COROS mobile app on your phone. Use `coros-mcp auth-web` (or let the wizard's default skip-mobile choice stand) — the mobile token is then fetched lazily on the first sleep-data request and refreshed automatically.
 
 ### `list_activities`
-
-List activities for a date range.
 
 ```json
 { "start_day": "20260101", "end_day": "20260305", "page": 1, "size": 30 }
 ```
 
-Returns: `activities` (list), `total_count`, `page`
-
-Each activity includes: `activity_id`, `name`, `sport_type`, `sport_name`, `start_time`, `end_time`, `duration_seconds`, `distance_meters`, `avg_hr`, `max_hr`, `calories`, `training_load`, `avg_power`, `normalized_power`, `elevation_gain`
+Returns: `activities`, `total_count`, `page`. Each activity includes `activity_id`, `name`, `sport_type`, `sport_name`, `start_time`, `end_time`, `duration_seconds`, `distance_meters`, `avg_hr`, `max_hr`, `calories`, `training_load`, `avg_power`, `normalized_power`, `elevation_gain`.
 
 ### `get_activity_detail`
-
-Fetch full detail for a single activity. Requires the `sport_type` from `list_activities`.
 
 ```json
 { "activity_id": "469901014965714948", "sport_type": 200 }
 ```
 
-Returns full activity data including laps, HR zones, power zones, and all sport-specific metrics.
-
-> **Note:** Large time-series arrays (`graphList`, `frequencyList`, `gpsLightDuration`) are stripped from the response to keep it manageable.
+Full activity data including laps, HR zones, power zones, and sport-specific metrics. Large time-series arrays (`graphList`, `frequencyList`, `gpsLightDuration`) are stripped to keep the response manageable.
 
 ### `export_activity_file`
-
-Export a completed activity file and save it locally.
 
 ```json
 {
@@ -269,27 +167,19 @@ Export a completed activity file and save it locally.
 }
 ```
 
-`file_type`: `gpx`, `fit`, `tcx`, `kml`, or `csv`
-
-Returns: `activity_id`, `sport_type`, `file_type`, `file_url`, `output_path`, `downloaded`
+`file_type`: `gpx`, `fit`, `tcx`, `kml`, or `csv`. Returns `activity_id`, `sport_type`, `file_type`, `file_url`, `output_path`, `downloaded`.
 
 ### `list_workouts`
-
-List all saved structured workout programs.
 
 ```json
 {}
 ```
 
-Returns: `workouts` (list), `count`
-
-Each workout includes: `id`, `name`, `sport_type`, `sport_name`, `estimated_time_seconds`, `exercise_count`, `exercises` (list of steps with `name`, `duration_seconds`, `power_low_w`, `power_high_w`)
+Returns `workouts`, `count`. Each workout includes `id`, `name`, `sport_type`, `sport_name`, `estimated_time_seconds`, `exercise_count`, `exercises` (steps with `name`, `duration_seconds`, `power_low_w`, `power_high_w`).
 
 ### `create_run_workout`
 
-Create a running workout with run-native step kinds (`warmup`, `training`, `rest`, `cooldown`), distance or time targets, and optional pace / HR intensity ranges. Supports repeat groups for intervals.
-
-**5×1km threshold with jog recovery:**
+Run-native step kinds (`warmup`, `training`, `rest`, `cooldown`), distance or time targets, optional pace / HR intensity ranges, nested `repeat` groups.
 
 ```json
 {
@@ -306,13 +196,13 @@ Create a running workout with run-native step kinds (`warmup`, `training`, `rest
 }
 ```
 
-Pace targets use `intensity_type: 3` with `intensity_value` / `intensity_value_extend` as seconds-per-km and `intensity_display_unit: 2`. For the full field vocabulary (HR zones, percent-of-LT, named intensity presets), call `get_run_workout_schema` or see [run_workout_schema.py](./run_workout_schema.py).
+Pace targets use `intensity_type: 3` with `intensity_value` / `intensity_value_extend` as seconds-per-km and `intensity_display_unit: 2`. Friendly pace strings like `"4:05-4:15/km"` or `"5:30/mi"` are also accepted on any run step as a `"pace"` field. For the full field vocabulary (HR zones, percent-of-LT, named intensity presets) call `get_run_workout_schema` or see [run_workout_schema.py](./run_workout_schema.py).
 
-Returns: `workout_id`, `sport_type`, `estimated_time_seconds`, `estimated_distance_meters`, `steps_count`, `message`
+Returns: `workout_id`, `sport_type`, `estimated_time_seconds`, `estimated_distance_meters`, `steps_count`, `message`.
 
 ### `update_run_workout`
 
-Clone-and-edit an existing running workout. Select each step to change by `step_name`, `step_id`, or `step_index`, and patch it with any run-step field used by `create_run_workout`. The original workout is preserved; a new workout ID is returned. If the original was scheduled, re-schedule the replacement with `schedule_workout`.
+Clone-and-edit an existing running workout. Select each step by `step_name`, `step_id`, or `step_index` and patch it with any run-step field used by `create_run_workout`. Original is preserved; a new workout ID is returned. If the original was scheduled, use `replace_scheduled_workout` (or `schedule_workout`) to swap the calendar entry.
 
 ```json
 {
@@ -325,19 +215,15 @@ Clone-and-edit an existing running workout. Select each step to change by `step_
 }
 ```
 
-Returns: `new_workout_id`, `original_workout_id`, `name`, `steps_count`, `message`
+Returns: `new_workout_id`, `original_workout_id`, `name`, `steps_count`, `message`.
 
 ### `get_run_workout_schema`
 
-Return the shared run-step schema used by both `create_run_workout` and `update_run_workout`, including allowed step kinds, target types, intensity presets pulled from the live Training Hub builder, and required vs. optional fields. Call this before authoring to avoid guessing which fields are valid.
-
-```json
-{}
-```
+Returns the shared schema used by `create_run_workout` and `update_run_workout`: allowed step kinds, target types, intensity presets pulled from the live Training Hub builder, and required vs. optional fields. Call this before authoring to avoid guessing.
 
 ### `create_workout`
 
-Generic time-and-power workout builder (primarily cycling). For running, prefer `create_run_workout`. Supports plain steps and nested `repeat` groups for intervals.
+Generic time-and-power builder (primarily cycling). For running, prefer `create_run_workout`.
 
 ```json
 {
@@ -354,101 +240,125 @@ Generic time-and-power workout builder (primarily cycling). For running, prefer 
 }
 ```
 
-`sport_type`: `2` = Indoor Cycling (default), `200` = Road Bike. Returns: `workout_id`, `name`, `total_minutes`, `steps_count`, `message`.
+`sport_type`: `2` = Indoor Cycling (default), `200` = Road Bike.
+
+### `update_workout`
+
+Lower-level clone-and-patch primitive used by `update_run_workout` and for strength edits. Patch steps/exercises by `step_name`, `step_id`, `step_index`, or `origin_id` (strength exercise swap). Supports `rest_seconds`, `target_type` (`time`|`reps`|`distance`), and any field the create side accepts.
 
 ### `delete_workout`
-
-Delete a workout program from the Coros account.
 
 ```json
 { "workout_id": "476023839273435149" }
 ```
 
-The `workout_id` comes from `list_workouts`.
-
-Returns: `deleted`, `workout_id`, `message`
-
-### `list_planned_activities`
-
-List planned activities from the Coros training calendar.
+### `list_planned_activities` / `list_scheduled_workouts`
 
 ```json
 { "start_day": "20260309", "end_day": "20260316" }
 ```
 
-Returns: `activities` (list), `count`, `date_range`
+Returns scheduled entries for the window, including library-sourced and plan-embedded programs. Use `list_scheduled_workouts` for the canonical MCP-facing shape.
 
 ### `schedule_workout`
-
-Add an existing workout from your library to the Coros training calendar.
 
 ```json
 { "workout_id": "1234567890", "happen_day": "20260312", "sort_no": 1 }
 ```
 
-Returns: `scheduled`, `workout_id`, `happen_day`
+### `move_scheduled_workout`
+
+Move a scheduled entry to a new day without losing the underlying workout. Handles both library-sourced entries and plan-embedded programs (which have no library counterpart).
+
+```json
+{ "plan_id": "987654321", "id_in_plan": "1234567890", "new_happen_day": "20260314" }
+```
+
+### `replace_scheduled_workout`
+
+Swap a scheduled entry for a different workout (typically a freshly updated clone) in-place. Preserves the calendar slot and sort order.
+
+```json
+{ "plan_id": "987654321", "id_in_plan": "1234567890", "replacement_workout_id": "476023839273435149" }
+```
 
 ### `remove_scheduled_workout`
 
-Remove a scheduled workout from the Coros training calendar.
-
 ```json
-{
-  "plan_id": "987654321",
-  "id_in_plan": "1234567890",
-  "plan_program_id": "1234567890"
-}
+{ "plan_id": "987654321", "id_in_plan": "1234567890", "plan_program_id": "1234567890" }
 ```
 
-`plan_id`, `id_in_plan`, and `plan_program_id` come from `list_planned_activities`. If `plan_program_id` is missing, you can usually reuse `id_in_plan`.
-
-Returns: `removed`, `plan_id`, `id_in_plan`
+If `plan_program_id` is missing from `list_planned_activities`, reuse `id_in_plan`.
 
 ### `create_strength_workout`
 
-Create a structured strength workout with repeated sets. Exercises must come from the Coros exercise catalogue.
+Structured strength workout with repeated sets. Exercises come from the COROS catalog (`list_exercises`).
 
 ```json
 {
   "name": "Leg Circuit",
   "sets": 3,
   "exercises": [
-    {
-      "origin_id": "54",
-      "name": "T1061",
-      "overview": "sid_strength_squats",
-      "target_type": 3,
-      "target_value": 12,
-      "rest_seconds": 45
-    },
-    {
-      "origin_id": "130",
-      "name": "T1176",
-      "overview": "sid_strength_plank",
-      "target_type": 2,
-      "target_value": 60,
-      "rest_seconds": 30
-    }
+    {"origin_id": "54",  "name": "T1061", "overview": "sid_strength_squats", "target_type": 3, "target_value": 12, "rest_seconds": 45},
+    {"origin_id": "130", "name": "T1176", "overview": "sid_strength_plank",  "target_type": 2, "target_value": 60, "rest_seconds": 30}
   ]
 }
 ```
 
-`target_type`: `2` = time in seconds, `3` = reps
-
-Returns: `workout_id`, `name`, `sets`, `exercise_count`
+`target_type`: `2` = time in seconds, `3` = reps.
 
 ### `list_exercises`
-
-List the Coros exercise catalogue for a sport type. Default `sport_type=4` returns strength exercises.
 
 ```json
 { "sport_type": 4 }
 ```
 
-Returns: `exercises` (list), `count`, `sport_type`
+`sport_type=4` is strength. Returns `exercises`, `count`, `sport_type`.
 
 ---
 
+## Manual setup (advanced)
+
+If you're not using one of the auto-detected assistants, install the server and point any MCP client at it:
+
+```bash
+uv tool install coros-training-mcp
+coros-mcp auth          # interactive login, stores tokens in keyring
+which coros-mcp         # absolute path for the config below
+```
+
+```json
+{ "mcpServers": { "coros": { "command": "/absolute/path/to/coros-mcp", "args": ["serve"] } } }
+```
+
+## Developer setup
+
+```bash
+git clone https://github.com/dholliday3/coros-training-mcp.git
+cd coros-training-mcp
+python3 -m venv .venv && source .venv/bin/activate
+pip install -e .[dev]
+pytest
+```
+
+## CLI reference
+
+```bash
+coros-mcp setup                 # first-time interactive setup
+coros-mcp setup --reconfigure   # re-run wizard
+coros-mcp uninstall             # remove from assistants
+coros-mcp serve                 # start the MCP server (what MCP clients run)
+coros-mcp auth                  # re-authenticate (web + mobile)
+coros-mcp auth-web              # web token only (sleep data lazy-loads)
+coros-mcp auth-mobile           # mobile token only
+coros-mcp auth-status           # check stored tokens
+coros-mcp auth-clear            # remove stored tokens
+```
+
+---
+
+Built on top of [cygnusb/coros-mcp](https://github.com/cygnusb/coros-mcp), kept as an upstream reference.
+
 ## Disclaimer
 
-This project uses the **unofficial** COROS Training Hub API. The API may change at any time without notice. Use at your own risk.
+Uses the **unofficial** COROS Training Hub API. The API may change at any time without notice. Not affiliated with or endorsed by COROS. Use at your own risk.
