@@ -5,9 +5,9 @@
   <meta name="viewport" content="width=device-width, initial-scale=1">
   <meta name="color-scheme" content="dark">
   <title>coros-training-mcp — Running-first MCP server for COROS</title>
-  <meta name="description" content="Running-first Model Context Protocol server for COROS. Author, edit, and schedule workouts from Claude Code, Claude Desktop, Codex, or Cursor. Install in two commands.">
+  <meta name="description" content="Running-first Model Context Protocol server for COROS. Author, edit, and schedule workouts from Claude Code, Claude Desktop, Codex, or Cursor. Runs locally. Credentials stored in your OS keyring, never exposed to the public internet.">
   <meta property="og:title" content="coros-training-mcp">
-  <meta property="og:description" content="Running-first MCP server for COROS. Author, edit, and schedule workouts from your AI assistant.">
+  <meta property="og:description" content="Running-first MCP server for COROS. Runs locally, credentials stay on your machine.">
   <meta property="og:type" content="website">
   <meta property="og:url" content="https://dholliday3.github.io/coros-training-mcp/">
   <link rel="stylesheet" href="style.css">
@@ -17,15 +17,17 @@
     <div class="wrap">
       <a href="/coros-training-mcp/" class="brand">coros&#8209;training&#8209;mcp</a>
       <nav>
-        <a href="#install">Install</a>
         <a href="#what">What it does</a>
-        <a href="#prompts">Prompts</a>
+        <a href="#demo">Demo</a>
+        <a href="#install">Install</a>
+        <a href="#privacy">Privacy</a>
         <a href="https://github.com/dholliday3/coros-training-mcp">GitHub&nbsp;↗</a>
       </nav>
     </div>
   </header>
 
   <main>
+    <!-- HERO -->
     <section class="hero">
       <div class="wrap">
         <div class="eyebrow">MCP · Running · COROS Training Hub</div>
@@ -41,9 +43,12 @@
         </p>
 
         <div class="install-block install-block--hero">
-          <div class="install-block-head">INSTALL</div>
           <pre><span class="prompt">$</span> uv tool install coros-training-mcp
 <span class="prompt">$</span> coros-mcp setup</pre>
+          <button type="button" class="copy-btn" data-copy="uv tool install coros-training-mcp&#10;coros-mcp setup" aria-label="Copy install commands">
+            <svg class="copy-icon" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="8" height="8" rx="1"/><path d="M11 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"/></svg>
+            <span class="copy-label">Copy</span>
+          </button>
         </div>
 
         <div class="cta">
@@ -53,6 +58,7 @@
       </div>
     </section>
 
+    <!-- WHAT IT DOES -->
     <section id="what" class="section">
       <div class="wrap">
         <h2 class="kicker">What it does</h2>
@@ -77,28 +83,156 @@
       </div>
     </section>
 
+    <!-- DEMO CONVERSATION -->
+    <section id="demo" class="section section--alt">
+      <div class="wrap">
+        <h2 class="kicker">See it in action</h2>
+        <p class="section-lead">
+          A real interaction with Claude. The human prompt maps to a single MCP tool call
+          using the shared run&#8209;step schema — pace parsing, repeat groups, and sensible
+          defaults all flow from one compact JSON body.
+        </p>
+
+        <div class="chat">
+          <div class="msg msg-user">
+            <div class="msg-label">You</div>
+            <div class="msg-body">
+              Build me a 5×1km threshold session at 4:05–4:15/km with 2&#8209;minute jog recoveries. 2&nbsp;km warm&#8209;up, 1.5&nbsp;km cool&#8209;down.
+            </div>
+          </div>
+
+          <div class="msg msg-assistant">
+            <div class="msg-label">Claude</div>
+            <div class="msg-body">
+              <p class="msg-intro">Creating the workout now.</p>
+              <div class="tool-call">
+                <div class="tool-call-head">
+                  <span class="tool-call-arrow">→</span> coros · create_run_workout
+                </div>
+                <pre class="tool-call-body"><span class="tok-punct">{</span>
+  <span class="tok-key">"name"</span><span class="tok-punct">:</span> <span class="tok-str">"Threshold 5×1km"</span><span class="tok-punct">,</span>
+  <span class="tok-key">"steps"</span><span class="tok-punct">:</span> <span class="tok-punct">[</span>
+    <span class="tok-punct">{</span> <span class="tok-key">"kind"</span><span class="tok-punct">:</span> <span class="tok-str">"warmup"</span><span class="tok-punct">,</span>   <span class="tok-key">"target_type"</span><span class="tok-punct">:</span> <span class="tok-str">"distance"</span><span class="tok-punct">,</span> <span class="tok-key">"target_distance_meters"</span><span class="tok-punct">:</span> <span class="tok-num">2000</span> <span class="tok-punct">}</span><span class="tok-punct">,</span>
+    <span class="tok-punct">{</span> <span class="tok-key">"repeat"</span><span class="tok-punct">:</span> <span class="tok-num">5</span><span class="tok-punct">,</span> <span class="tok-key">"name"</span><span class="tok-punct">:</span> <span class="tok-str">"Main Set"</span><span class="tok-punct">,</span> <span class="tok-key">"steps"</span><span class="tok-punct">:</span> <span class="tok-punct">[</span>
+        <span class="tok-punct">{</span> <span class="tok-key">"kind"</span><span class="tok-punct">:</span> <span class="tok-str">"training"</span><span class="tok-punct">,</span> <span class="tok-key">"target_distance_meters"</span><span class="tok-punct">:</span> <span class="tok-num">1000</span><span class="tok-punct">,</span> <span class="tok-key">"pace"</span><span class="tok-punct">:</span> <span class="tok-str">"4:05-4:15/km"</span> <span class="tok-punct">}</span><span class="tok-punct">,</span>
+        <span class="tok-punct">{</span> <span class="tok-key">"kind"</span><span class="tok-punct">:</span> <span class="tok-str">"rest"</span><span class="tok-punct">,</span>     <span class="tok-key">"target_type"</span><span class="tok-punct">:</span> <span class="tok-str">"time"</span><span class="tok-punct">,</span> <span class="tok-key">"target_duration_seconds"</span><span class="tok-punct">:</span> <span class="tok-num">120</span> <span class="tok-punct">}</span>
+      <span class="tok-punct">]</span> <span class="tok-punct">}</span><span class="tok-punct">,</span>
+    <span class="tok-punct">{</span> <span class="tok-key">"kind"</span><span class="tok-punct">:</span> <span class="tok-str">"cooldown"</span><span class="tok-punct">,</span> <span class="tok-key">"target_type"</span><span class="tok-punct">:</span> <span class="tok-str">"distance"</span><span class="tok-punct">,</span> <span class="tok-key">"target_distance_meters"</span><span class="tok-punct">:</span> <span class="tok-num">1500</span> <span class="tok-punct">}</span>
+  <span class="tok-punct">]</span>
+<span class="tok-punct">}</span></pre>
+                <div class="tool-call-result">
+                  <span class="tok-ok">✓</span> workout_id <span class="tok-str">"476942477474054144"</span> · 8.5&nbsp;km · ~42&nbsp;min
+                </div>
+              </div>
+              <p class="msg-outro">
+                Done — <strong>Threshold 5×1km</strong> is in your COROS library. 8.5&nbsp;km total.
+                Want me to schedule it for a specific day?
+              </p>
+            </div>
+          </div>
+
+          <div class="msg msg-user">
+            <div class="msg-label">You</div>
+            <div class="msg-body">Actually make it 6 reps, and put it on Tuesday.</div>
+          </div>
+
+          <div class="msg msg-assistant">
+            <div class="msg-label">Claude</div>
+            <div class="msg-body">
+              <div class="tool-call tool-call--compact">
+                <div class="tool-call-head"><span class="tool-call-arrow">→</span> coros · update_run_workout</div>
+                <pre class="tool-call-body"><span class="tok-punct">{</span> <span class="tok-key">"workout_id"</span><span class="tok-punct">:</span> <span class="tok-str">"476942…"</span><span class="tok-punct">,</span> <span class="tok-key">"step_updates"</span><span class="tok-punct">:</span> <span class="tok-punct">[{</span> <span class="tok-key">"step_name"</span><span class="tok-punct">:</span> <span class="tok-str">"Main Set"</span><span class="tok-punct">,</span> <span class="tok-key">"repeat"</span><span class="tok-punct">:</span> <span class="tok-num">6</span> <span class="tok-punct">}] }</span></pre>
+              </div>
+              <div class="tool-call tool-call--compact">
+                <div class="tool-call-head"><span class="tool-call-arrow">→</span> coros · schedule_workout</div>
+                <pre class="tool-call-body"><span class="tok-punct">{</span> <span class="tok-key">"workout_id"</span><span class="tok-punct">:</span> <span class="tok-str">"476943…"</span><span class="tok-punct">,</span> <span class="tok-key">"happen_day"</span><span class="tok-punct">:</span> <span class="tok-str">"20260428"</span> <span class="tok-punct">}</span></pre>
+              </div>
+              <p class="msg-outro">
+                Updated to 6 reps (9.5&nbsp;km total) and scheduled for Tue Apr&nbsp;28. Watch will pick it up on next sync.
+              </p>
+            </div>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- PRIVACY -->
+    <section id="privacy" class="section">
+      <div class="wrap">
+        <h2 class="kicker">Local &amp; private</h2>
+        <p class="section-lead">
+          This is a local MCP. It runs on your machine as a subprocess of your AI
+          assistant — nothing is hosted, nothing is proxied, no third-party server sees
+          your requests or your data.
+        </p>
+        <div class="privacy-grid">
+          <div class="privacy-item">
+            <div class="privacy-num">01</div>
+            <h3>Credentials stay on your machine</h3>
+            <p>
+              Your COROS email and password are stored in your OS keyring
+              (macOS&nbsp;Keychain, Windows&nbsp;Credential&nbsp;Manager, Linux&nbsp;Secret&nbsp;Service),
+              or an AES&#8209;encrypted file fallback. They are only ever sent over TLS
+              directly to <code>teamapi.coros.com</code>.
+            </p>
+          </div>
+          <div class="privacy-item">
+            <div class="privacy-num">02</div>
+            <h3>No public internet exposure</h3>
+            <p>
+              The MCP speaks stdio to your local assistant. There is no network
+              listener, no inbound port, no tunnel. Traffic is outbound only, to COROS.
+            </p>
+          </div>
+          <div class="privacy-item">
+            <div class="privacy-num">03</div>
+            <h3>No analytics, no telemetry</h3>
+            <p>
+              Zero pings home. Zero third&#8209;party services. The repository is open source
+              under the MIT license — every request the MCP can make is auditable in
+              under an hour of reading.
+            </p>
+          </div>
+          <div class="privacy-item">
+            <div class="privacy-num">04</div>
+            <h3>Revoke in seconds</h3>
+            <p>
+              <code>coros-mcp uninstall</code> removes the MCP entry from your assistants
+              and clears your stored credentials. Or delete the keyring entry directly —
+              no remote state to clean up.
+            </p>
+          </div>
+        </div>
+      </div>
+    </section>
+
+    <!-- INSTALL -->
     <section id="install" class="section section--alt">
       <div class="wrap">
         <h2 class="kicker">Install</h2>
         <div class="install-block">
           <pre><span class="prompt">$</span> uv tool install coros-training-mcp
 <span class="prompt">$</span> coros-mcp setup</pre>
+          <button type="button" class="copy-btn" data-copy="uv tool install coros-training-mcp&#10;coros-mcp setup" aria-label="Copy install commands">
+            <svg class="copy-icon" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="8" height="8" rx="1"/><path d="M11 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"/></svg>
+            <span class="copy-label">Copy</span>
+          </button>
         </div>
         <p class="fine">
-          The wizard asks for your COROS email, password, and region, stores the token in
-          your system keyring, detects Claude Code, Claude Desktop, Codex CLI, and Cursor,
-          and registers the MCP with the ones you pick. Pre&#8209;existing MCP entries in those
-          configs are preserved.
-        </p>
-        <p class="fine">
-          No API key is needed. Credentials are only ever sent to COROS. Tokens never leave
-          your machine.
+          No API key needed. The wizard asks for your COROS email, password, and region,
+          verifies them against the COROS API, stores the token in your OS keyring, and
+          registers the MCP with your detected AI assistants. Pre&#8209;existing MCP entries
+          are preserved byte&#8209;for&#8209;byte.
         </p>
         <details>
           <summary>Using pipx instead</summary>
           <div class="install-block">
             <pre><span class="prompt">$</span> pipx install coros-training-mcp
 <span class="prompt">$</span> coros-mcp setup</pre>
+            <button type="button" class="copy-btn" data-copy="pipx install coros-training-mcp&#10;coros-mcp setup" aria-label="Copy pipx install commands">
+              <svg class="copy-icon" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="8" height="8" rx="1"/><path d="M11 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"/></svg>
+              <span class="copy-label">Copy</span>
+            </button>
           </div>
         </details>
         <details>
@@ -115,15 +249,82 @@
             <pre><span class="prompt">$</span> uv tool upgrade coros-training-mcp
 <span class="prompt">$</span> coros-mcp setup --reconfigure   <span class="comment"># change creds or add assistants</span>
 <span class="prompt">$</span> coros-mcp uninstall              <span class="comment"># remove from assistants</span></pre>
+            <button type="button" class="copy-btn" data-copy="uv tool upgrade coros-training-mcp&#10;coros-mcp setup --reconfigure&#10;coros-mcp uninstall" aria-label="Copy lifecycle commands">
+              <svg class="copy-icon" aria-hidden="true" viewBox="0 0 16 16" fill="none" stroke="currentColor" stroke-width="1.4" stroke-linecap="round" stroke-linejoin="round"><rect x="5" y="5" width="8" height="8" rx="1"/><path d="M11 5V4a1 1 0 0 0-1-1H4a1 1 0 0 0-1 1v6a1 1 0 0 0 1 1h1"/></svg>
+              <span class="copy-label">Copy</span>
+            </button>
           </div>
         </details>
       </div>
     </section>
 
-    <section id="prompts" class="section">
+    <!-- SETUP WALKTHROUGH -->
+    <section class="section">
+      <div class="wrap">
+        <h2 class="kicker">What setup looks like</h2>
+        <p class="section-lead">
+          <code>coros-mcp setup</code> is a single linear wizard. Here's a real run on a
+          machine with Claude Code and Claude Desktop installed — you answer four
+          prompts, everything else is automatic.
+        </p>
+
+        <div class="wizard">
+          <div class="wizard-head">
+            <span class="wizard-dots" aria-hidden="true"><span></span><span></span><span></span></span>
+            <span class="wizard-title">~ / coros&#8209;mcp setup</span>
+          </div>
+          <pre class="wizard-body">
+<span class="w-prompt">$</span> coros-mcp setup
+
+<span class="w-heading">Coros MCP — setup</span>
+
+Credentials will be stored in your system keyring.
+
+<span class="w-q">?</span> Coros email:    <span class="w-user">you@example.com</span>
+<span class="w-q">?</span> Coros password: <span class="w-user">●●●●●●●●●●●●</span>
+<span class="w-q">?</span> Region:         <span class="w-user">EU  (teameuapi.coros.com)</span>
+
+Verifying credentials against the EU API…
+<span class="w-ok">✓</span> Authenticated as user 458991455476662278.
+  Mobile token was skipped and will be fetched lazily on the first sleep query.
+
+Detected 2 assistants on this machine.
+
+<span class="w-q">?</span> Install Coros MCP into which assistants?
+  <span class="w-check">◉</span> Claude Code (CLI)
+  <span class="w-check">◉</span> Claude Desktop
+
+Installing with command: /Users/you/.local/bin/coros-mcp serve
+
+  <span class="w-ok">✓</span> Claude Code:    installed — registered via `claude mcp add`
+  <span class="w-ok">✓</span> Claude Desktop: installed — wrote ~/Library/Application Support/Claude/claude_desktop_config.json
+
+Running post-install smoke test (booting server over stdio)…
+<span class="w-ok">✓</span> Smoke test passed — coros-mcp responded to initialize OK
+
+<span class="w-heading">Next steps:</span>
+  • Claude Desktop: restart the app so it picks up the new MCP entry.
+  • Claude Code: ready to go — no restart needed.
+
+<span class="w-heading">Try it:</span>
+  "What workouts do I have scheduled this week?"
+  "What was my HRV trend over the past month?"
+</pre>
+        </div>
+
+        <p class="fine">
+          Total time: under a minute. Rerun with <code>--reconfigure</code> to add another
+          assistant later. The wizard never writes plaintext credentials to disk and
+          refuses to overwrite unparseable config files.
+        </p>
+      </div>
+    </section>
+
+    <!-- QUICK PROMPTS -->
+    <section class="section section--alt">
       <div class="wrap">
         <h2 class="kicker">Try it</h2>
-        <p class="section-lead">Once installed, ask your AI assistant things like:</p>
+        <p class="section-lead">More prompts to throw at your assistant once installed:</p>
         <ul class="prompt-list">
           <li><q>Create a 5×1km threshold workout at 4:05&#8209;4:15/km with 2&#8209;minute jog recovery.</q></li>
           <li><q>Change my Tuesday VO<sub>2</sub> workout to 6 reps instead of 5.</q></li>
@@ -135,7 +336,8 @@
       </div>
     </section>
 
-    <section class="section section--alt">
+    <!-- TOOLS -->
+    <section class="section">
       <div class="wrap">
         <h2 class="kicker">Tools exposed</h2>
         <div class="tool-grid">
@@ -167,5 +369,7 @@
       </p>
     </div>
   </footer>
+
+  <script src="copy.js" defer></script>
 </body>
 </html>
