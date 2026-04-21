@@ -39,6 +39,7 @@ body {
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
   text-rendering: optimizeLegibility;
+  overflow-x: clip;
 }
 
 ::selection { background: var(--accent); color: #000; }
@@ -334,9 +335,10 @@ header nav a:hover { color: var(--text); }
 
 .msg {
   display: grid;
-  grid-template-columns: 80px 1fr;
+  grid-template-columns: 80px minmax(0, 1fr);
   gap: 1rem;
   align-items: start;
+  min-width: 0;
 }
 
 .msg-label {
@@ -357,6 +359,8 @@ header nav a:hover { color: var(--text); }
   padding: 1rem 1.25rem;
   font-size: 0.97rem;
   line-height: 1.6;
+  min-width: 0;
+  overflow: hidden;
 }
 
 .msg-user .msg-body {
@@ -378,6 +382,8 @@ header nav a:hover { color: var(--text); }
   border: 1px solid var(--border);
   background: var(--bg-deep);
   margin: 0.75rem 0;
+  max-width: 100%;
+  overflow: hidden;
 }
 
 .tool-call + .tool-call { margin-top: 0.6rem; }
@@ -540,6 +546,7 @@ details > * + * { margin-top: 1rem; }
   max-width: 840px;
   margin-bottom: 1.5rem;
   box-shadow: 0 20px 40px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
 }
 
 .wizard-head {
@@ -694,7 +701,7 @@ footer {
   .section { padding: 3.5rem 0; }
   .install-block pre { font-size: 0.82rem; }
   .footer-grid { flex-direction: column; gap: 1.5rem; }
-  .msg { grid-template-columns: 1fr; gap: 0.5rem; }
+  .msg { grid-template-columns: minmax(0, 1fr); gap: 0.5rem; }
   .msg-label { padding-top: 0; }
   .wizard-body { font-size: 0.76rem; }
 }
