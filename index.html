@@ -1,0 +1,171 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="color-scheme" content="dark">
+  <title>coros-training-mcp — Running-first MCP server for COROS</title>
+  <meta name="description" content="Running-first Model Context Protocol server for COROS. Author, edit, and schedule workouts from Claude Code, Claude Desktop, Codex, or Cursor. Install in two commands.">
+  <meta property="og:title" content="coros-training-mcp">
+  <meta property="og:description" content="Running-first MCP server for COROS. Author, edit, and schedule workouts from your AI assistant.">
+  <meta property="og:type" content="website">
+  <meta property="og:url" content="https://dholliday3.github.io/coros-training-mcp/">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <header>
+    <div class="wrap">
+      <a href="/coros-training-mcp/" class="brand">coros&#8209;training&#8209;mcp</a>
+      <nav>
+        <a href="#install">Install</a>
+        <a href="#what">What it does</a>
+        <a href="#prompts">Prompts</a>
+        <a href="https://github.com/dholliday3/coros-training-mcp">GitHub&nbsp;↗</a>
+      </nav>
+    </div>
+  </header>
+
+  <main>
+    <section class="hero">
+      <div class="wrap">
+        <div class="eyebrow">MCP · Running · COROS Training Hub</div>
+        <h1>
+          <span class="accent">Running&#8209;first</span><br>
+          MCP server<br>
+          for COROS.
+        </h1>
+        <p class="lead">
+          Author, edit, and schedule running workouts from Claude Code, Claude Desktop,
+          Codex, or Cursor. Pace&#8209;based intervals, repeat groups, plan&#8209;embedded edits —
+          plus sleep, HRV, training load, and activity exports.
+        </p>
+
+        <div class="install-block install-block--hero">
+          <div class="install-block-head">INSTALL</div>
+          <pre><span class="prompt">$</span> uv tool install coros-training-mcp
+<span class="prompt">$</span> coros-mcp setup</pre>
+        </div>
+
+        <div class="cta">
+          <a href="#install" class="btn btn-primary">Get started</a>
+          <a href="https://github.com/dholliday3/coros-training-mcp" class="btn">View on GitHub&nbsp;↗</a>
+        </div>
+      </div>
+    </section>
+
+    <section id="what" class="section">
+      <div class="wrap">
+        <h2 class="kicker">What it does</h2>
+        <div class="grid">
+          <article class="card">
+            <h3>Running workout authoring</h3>
+            <p>Pace&#8209;based reps (<code>4:05&#8209;4:15/km</code>), distance or time targets, repeat groups, HR zones. One shared schema across create and update.</p>
+          </article>
+          <article class="card">
+            <h3>Edit scheduled runs</h3>
+            <p>Clone&#8209;and&#8209;swap edits — change rep count, pace, or recovery without losing the calendar entry. Works for library workouts and plan&#8209;embedded programs inside subscribed training plans.</p>
+          </article>
+          <article class="card">
+            <h3>Strength circuits</h3>
+            <p>Create from the COROS exercise catalog. Edit reps, duration, rest, or swap exercises without recreating the workout.</p>
+          </article>
+          <article class="card">
+            <h3>Training data</h3>
+            <p>Sleep stages, HRV, resting HR, training load, VO<sub>2</sub>max, stamina, and activity exports (GPX, FIT, TCX, KML, CSV).</p>
+          </article>
+        </div>
+      </div>
+    </section>
+
+    <section id="install" class="section section--alt">
+      <div class="wrap">
+        <h2 class="kicker">Install</h2>
+        <div class="install-block">
+          <pre><span class="prompt">$</span> uv tool install coros-training-mcp
+<span class="prompt">$</span> coros-mcp setup</pre>
+        </div>
+        <p class="fine">
+          The wizard asks for your COROS email, password, and region, stores the token in
+          your system keyring, detects Claude Code, Claude Desktop, Codex CLI, and Cursor,
+          and registers the MCP with the ones you pick. Pre&#8209;existing MCP entries in those
+          configs are preserved.
+        </p>
+        <p class="fine">
+          No API key is needed. Credentials are only ever sent to COROS. Tokens never leave
+          your machine.
+        </p>
+        <details>
+          <summary>Using pipx instead</summary>
+          <div class="install-block">
+            <pre><span class="prompt">$</span> pipx install coros-training-mcp
+<span class="prompt">$</span> coros-mcp setup</pre>
+          </div>
+        </details>
+        <details>
+          <summary>Requirements</summary>
+          <ul class="bullets">
+            <li>Python ≥ 3.11 (fetched automatically by <code>uv tool install</code>)</li>
+            <li>A COROS Training Hub account</li>
+            <li>macOS, Linux, or Windows</li>
+          </ul>
+        </details>
+        <details>
+          <summary>Upgrading &amp; uninstalling</summary>
+          <div class="install-block">
+            <pre><span class="prompt">$</span> uv tool upgrade coros-training-mcp
+<span class="prompt">$</span> coros-mcp setup --reconfigure   <span class="comment"># change creds or add assistants</span>
+<span class="prompt">$</span> coros-mcp uninstall              <span class="comment"># remove from assistants</span></pre>
+          </div>
+        </details>
+      </div>
+    </section>
+
+    <section id="prompts" class="section">
+      <div class="wrap">
+        <h2 class="kicker">Try it</h2>
+        <p class="section-lead">Once installed, ask your AI assistant things like:</p>
+        <ul class="prompt-list">
+          <li><q>Create a 5×1km threshold workout at 4:05&#8209;4:15/km with 2&#8209;minute jog recovery.</q></li>
+          <li><q>Change my Tuesday VO<sub>2</sub> workout to 6 reps instead of 5.</q></li>
+          <li><q>Move Thursday's tempo run to Friday.</q></li>
+          <li><q>What was my HRV trend over the past month?</q></li>
+          <li><q>How much deep sleep and REM did I get last week?</q></li>
+          <li><q>Export my Saturday long run to GPX.</q></li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="section section--alt">
+      <div class="wrap">
+        <h2 class="kicker">Tools exposed</h2>
+        <div class="tool-grid">
+          <div><code>list_workouts</code> · <code>get_workout</code> · <code>create_run_workout</code> · <code>update_run_workout</code> · <code>get_run_workout_schema</code></div>
+          <div><code>create_strength_workout</code> · <code>update_workout</code> · <code>get_strength_workout_schema</code> · <code>list_exercises</code> · <code>delete_workout</code></div>
+          <div><code>list_scheduled_workouts</code> · <code>schedule_workout</code> · <code>move_scheduled_workout</code> · <code>replace_scheduled_workout</code> · <code>remove_scheduled_workout</code></div>
+          <div><code>get_daily_metrics</code> · <code>get_sleep_data</code> · <code>list_activities</code> · <code>get_activity_detail</code> · <code>export_activity_file</code></div>
+        </div>
+      </div>
+    </section>
+  </main>
+
+  <footer>
+    <div class="wrap">
+      <div class="footer-grid">
+        <div>
+          <div class="footer-brand">coros&#8209;training&#8209;mcp</div>
+          <p class="fine">Open source. MIT licensed. Built on <a href="https://github.com/cygnusb/coros-mcp">cygnusb/coros&#8209;mcp</a> upstream.</p>
+        </div>
+        <div class="footer-links">
+          <a href="https://github.com/dholliday3/coros-training-mcp">GitHub</a>
+          <a href="https://pypi.org/project/coros-training-mcp/">PyPI</a>
+          <a href="https://github.com/dholliday3/coros-training-mcp/issues">Issues</a>
+          <a href="https://github.com/dholliday3/coros-training-mcp/blob/main/README.md">Docs</a>
+        </div>
+      </div>
+      <p class="fine disclaimer">
+        Uses the unofficial COROS Training Hub API. Not affiliated with or endorsed by COROS.
+      </p>
+    </div>
+  </footer>
+</body>
+</html>
