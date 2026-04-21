@@ -89,7 +89,7 @@ See [docs/installer-plan.md](./docs/installer-plan.md) for the full design.
 - [x] Register pending trusted publisher on PyPI (`pypi` env) per [docs/release.md](./docs/release.md)
 - [x] Create `pypi` GitHub environment with tag-scoped deployment policy (`v*`)
 - [x] Cut `v0.2.0` → first real PyPI publish (claims the project name) — shipped 2026-04-21, https://pypi.org/project/coros-training-mcp/0.2.0/
-- [ ] Publish a GitHub Pages install landing page (copy-paste `claude mcp add` command, env var setup, short demo) at `https://<user>.github.io/coros-training-mcp/`
+- [x] Publish a GitHub Pages install landing page — live at https://dholliday3.github.io/coros-training-mcp/ (served from `gh-pages` branch; static, no JS, COROS-inspired dark styling)
 
 ## Upstreaming
 
