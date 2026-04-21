@@ -4,6 +4,7 @@ This file tracks the actionable work for the fork. Strategy, scope, and architec
 
 Major work-in-progress plans:
 - [Installer & onboarding plan](./docs/installer-plan.md) — `uv tool install` + `coros-mcp setup` wizard, end-to-end packaged distribution.
+- [Release process](./docs/release.md) — OIDC trusted publishing via GitHub Actions (no long-lived PyPI tokens).
 
 ## Current Phase
 
@@ -84,7 +85,11 @@ See [docs/installer-plan.md](./docs/installer-plan.md) for the full design.
 - [x] Unit + integration tests for installer (config writers, detection, smoke test)
 - [x] End-to-end release validation on a clean environment per the plan's validation checklist (local wheel → `uv tool install` → `coros-mcp serve` smoke test → `claude mcp add` subprocess round-trip → atomic config merge preserving other MCP entries)
 - [x] Rewrite README setup section around the packaged flow; move the manual Keychain/wrapper path to an appendix
-- [ ] Publish to PyPI (test-publish to TestPyPI first, then real publish; requires PyPI credentials on maintainer's machine)
+- [x] Set up GitHub Actions release workflow with OIDC trusted publishing (`.github/workflows/release.yml`) — no long-lived API tokens; tag-triggered; verifies tag↔pyproject version match; runs tests; smoke-tests the built wheel
+- [ ] Register pending trusted publishers on PyPI (`pypi` env) and TestPyPI (`testpypi` env) per [docs/release.md](./docs/release.md)
+- [ ] Create `pypi` + `testpypi` GitHub environments with branch/tag protection rules
+- [ ] Cut `v0.2.0rc1` → publishes to TestPyPI; verify `uv tool install` from TestPyPI works
+- [ ] Cut `v0.2.0` → first real PyPI publish (claims the project name)
 - [ ] Publish a GitHub Pages install landing page (copy-paste `claude mcp add` command, env var setup, short demo) at `https://<user>.github.io/coros-training-mcp/`
 
 ## Upstreaming
